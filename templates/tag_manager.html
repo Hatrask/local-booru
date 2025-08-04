@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tag Manager - local-booru</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="tag-manager-container">
+        <h1>Tag Manager</h1>
+        <a href="/" class="back action-button">Back to Home</a>
+
+        <h2>All Tags</h2>
+        <div id="loading-message">Loading tags...</div>
+        <ul id="tagList" class="tag-list"></ul>
+    </div>
+
+<script src="/static/js/notifications.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const tagListElem = document.getElementById('tagList');
+        const loadingMessage = document.getElementById('loading-message');
+        let allTags = [];
+
+        async function fetchTags() {
+            loadingMessage.style.display = 'block';
+            tagListElem.innerHTML = '';
+            try {
+                const response = await fetch('/api/tags/summary');
+                if (!response.ok) throw new Error('Network response was not ok.');
+                
+                const data = await response.json();
+                allTags = data.tags; 
+                renderTags(data.tags, data.untagged_count);
+
+            } catch (err) {
+                console.error('Error fetching tags:', err);
+                tagListElem.innerHTML = '<li style="text-align: center;">Error loading tags.</li>';
+            } finally {
+                loadingMessage.style.display = 'none';
+            }
+        }
+
+        function renderTags(tags, untaggedCount) {
+            tagListElem.innerHTML = '';
+            
+            if (untaggedCount > 0) {
+                const untaggedLi = document.createElement('li');
+                untaggedLi.className = 'tag-item';
+                untaggedLi.innerHTML = `
+                    <div class="tag-display">
+                        <div>
+                            <a href="/gallery?q=untagged" class="tag-name-link">untagged</a>
+                            <span class="tag-count">(${untaggedCount})</span>
+                        </div>
+                    </div>
+                `;
+                tagListElem.appendChild(untaggedLi);
+            }
+
+            tags.forEach(tag => {
+                const li = document.createElement('li');
+                li.className = 'tag-item';
+                li.id = `tag-item-${tag.id}`;
+
+                li.innerHTML = `
+                    <div class="tag-display">
+                        <div>
+                            <a href="/gallery?q=${encodeURIComponent(tag.name)}" class="tag-name-link">${tag.name}</a>
+                            <span class="tag-count">(${tag.count})</span>
+                        </div>
+                        <div class="tag-controls">
+                            <button class="edit-btn action-button" data-tag-id="${tag.id}">Edit</button>
+                            <button class="force-delete-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Force Delete</button>
+                        </div>
+                    </div>
+                    <div class="edit-form hidden" id="edit-form-${tag.id}">
+                        <input type="text" value="${tag.name}" id="rename-input-${tag.id}" placeholder="New name...">
+                        <button class="rename-btn action-button" data-tag-id="${tag.id}">Rename</button>
+                        <span>or merge into:</span>
+                        <select id="merge-select-${tag.id}"></select>
+                        <button class="merge-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Merge</button>
+                        <button class="cancel-btn action-button" data-tag-id="${tag.id}">Cancel</button>
+                    </div>
+                `;
+                tagListElem.appendChild(li);
+            });
+
+            tagListElem.addEventListener('click', handleTagListClick);
+        }
+        
+        function toggleEditForm(tagId) {
+            const form = document.getElementById(`edit-form-${tagId}`);
+            if (!form) return;
+            
+            const isHidden = form.classList.toggle('hidden');
+            
+            if (!isHidden) {
+                populateMergeSelect(tagId);
+            }
+        }
+
+        function populateMergeSelect(tagIdToExclude) {
+            const selectElement = document.getElementById(`merge-select-${tagIdToExclude}`);
+            if (!selectElement) return;
+
+            const otherTags = allTags.filter(tag => tag.id.toString() !== tagIdToExclude.toString());
+
+            selectElement.innerHTML = '<option value="">Select a tag...</option>';
+            otherTags.forEach(tag => {
+                const option = document.createElement('option');
+                option.value = tag.id;
+                option.textContent = `${tag.name} (${tag.count})`;
+                selectElement.appendChild(option);
+            });
+        }
+
+        function handleTagListClick(e) {
+            const target = e.target;
+            const tagId = target.dataset.tagId;
+
+            if (target.matches('.edit-btn') || target.matches('.cancel-btn')) {
+                toggleEditForm(tagId);
+            } else if (target.matches('.rename-btn')) {
+                handleRename(tagId);
+            } else if (target.matches('.merge-btn')) {
+                handleMerge(tagId, target.dataset.tagName);
+            } else if (target.matches('.force-delete-btn')) {
+                handleForceDelete(tagId, target.dataset.tagName);
+            }
+        }
+        
+        async function handleRename(tagId) {
+            const newNameInput = document.getElementById(`rename-input-${tagId}`);
+            const newName = newNameInput.value.trim();
+            if (!newName) {
+                showToast('New tag name cannot be empty.', 'info');
+                return;
+            }
+
+            const confirmed = await showConfirmation(`Are you sure you want to rename this tag to "${newName}"?`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/tags/rename/${tagId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_name: newName })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(result.message, 'success');
+                    fetchTags();
+                } else {
+                    showToast(`Rename failed: ${result.detail}`, 'error');
+                }
+            } catch (err) {
+                console.error('Error renaming tag:', err);
+                showToast('An unexpected error occurred during the rename.', 'error');
+            }
+        }
+
+        async function handleMerge(tagIdToDelete, tagNameToDelete) {
+            const selectElement = document.getElementById(`merge-select-${tagIdToDelete}`);
+            const tagIdToKeep = selectElement.value;
+
+            if (!tagIdToKeep) {
+                showToast('Please select a tag to merge into.', 'info');
+                return;
+            }
+            
+            const tagToKeepName = selectElement.options[selectElement.selectedIndex].textContent.split(' ')[0];
+
+            const confirmed = await showConfirmation(`Are you sure you want to merge tag "${tagNameToDelete}" into "${tagToKeepName}"? This will delete "${tagNameToDelete}".`);
+            if (!confirmed) return;
+
+            const formData = new FormData();
+            formData.append('tag_id_to_keep', tagIdToKeep);
+            formData.append('tag_id_to_delete', tagIdToDelete);
+
+            try {
+                const response = await fetch('/api/tags/merge', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(result.message, 'success');
+                    fetchTags();
+                } else {
+                    showToast(`Merge failed: ${result.detail}`, 'error');
+                }
+            } catch (err) {
+                console.error('Error merging tags:', err);
+                showToast('An unexpected error occurred during the merge.', 'error');
+            }
+        }
+        
+        async function handleForceDelete(tagId, tagName) {
+            const confirmed = await showConfirmation(`WARNING: Are you absolutely sure you want to PERMANENTLY DELETE the tag "${tagName}"? This will remove the tag from all associated images.`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/tags/force_delete/${tagId}`, { method: 'POST' });
+                const result = await response.json();
+                if (response.ok) {
+                    showToast(result.message, 'success');
+                    fetchTags();
+                } else {
+                    showToast(`Deletion failed: ${result.detail}`, 'error');
+                }
+            } catch (err) {
+                console.error('Error deleting tag:', err);
+                showToast('An unexpected error occurred during the deletion.', 'error');
+            }
+        }
+
+        // Initial load
+        fetchTags();
+    });
+</script>
+</body>
+</html>

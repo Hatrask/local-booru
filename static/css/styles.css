@@ -1,0 +1,751 @@
+/* --- Global & Typography Styles --- */
+body {
+    font-family: sans-serif;
+    max-width: 1920px;
+    margin: auto;
+    padding: 2rem;
+    background-color: #121212;
+    color: #e0e0e0;
+    text-align: center;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+h3 {
+    text-align: center;
+    margin-top: 0;
+}
+
+p {
+    text-align: center;
+}
+
+nav {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+a {
+    text-decoration: none;
+    color: #4a90e2;
+}
+
+nav a {
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+/* --- Search & Form Styles (Reusable) --- */
+form.search-form,
+form.search-form-index {
+    margin: 0.7rem auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.autocomplete-container {
+    position: relative;
+    width: 100%;
+	margin: 0.5rem 0;
+}
+
+form.search-form input[type="text"],
+form.search-form-index input[type="text"] {
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 1.1rem;
+    box-sizing: border-box;
+    border: 1px solid #444;
+    border-right: none;
+    outline: none;
+    background-color: #333;
+    color: #e0e0e0;
+    /* Fixes tiny gap between input and button */
+    border-radius: 4px 0 0 4px;
+}
+
+form.search-form button,
+form.search-form-index button {
+    padding: 0.7rem 1.2rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+    border: 1px solid #4a90e2;
+    background-color: #4a90e2;
+    color: white;
+    outline: none;
+    transition: background-color 0.2s;
+    border-radius: 0 4px 4px 0;
+}
+
+form.search-form button:hover,
+form.search-form-index button:hover {
+    background-color: #357ae8;
+}
+
+.suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 150px;
+    overflow-y: auto;
+    background: #333;
+    border: 1px solid #444;
+    border-top: none;
+    z-index: 10;
+    display: none;
+    text-align: left;
+    box-sizing: border-box;
+    border-radius: 0 0 4px 4px;
+}
+
+.suggestions div {
+    padding: 0.6rem;
+    cursor: pointer;
+    color: #e0e0e0;
+}
+
+.suggestions div:hover,
+.suggestions .highlight {
+    background-color: #444;
+}
+
+/* --- Form specific styles for the upload page --- */
+.upload-form-container {
+    max-width: 600px;
+    margin: auto;
+}
+
+.upload-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+}
+
+.upload-form input[type="file"] {
+    margin-bottom: 1rem;
+}
+
+.upload-form input[type="text"] {
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 1.1rem;
+    box-sizing: border-box;
+    border: 1px solid #444;
+    border-radius: 4px;
+    outline: none;
+    background-color: #333;
+    color: #e0e0e0;
+}
+
+.upload-form .autocomplete-container {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.upload-form .suggestions {
+    border-top: 1px solid #444;
+    border-radius: 0 0 4px 4px;
+}
+
+.upload-form #upload-button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 100%;
+}
+
+#upload-status {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+#preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1rem;
+}
+
+.preview-thumb {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+/* --- Image Gallery & Lightbox Styles --- */
+:root {
+    --thumb-width: 250px;
+}
+
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.thumb {
+    width: var(--thumb-width);
+    box-sizing: border-box;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.thumb img {
+    max-width: 100%;
+    height: auto;
+    cursor: pointer;
+    display: block; /* Fixes small gap below image */
+}
+
+.tags {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    word-wrap: break-word;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.thumb:hover .tags {
+    opacity: 1;
+}
+
+.action-button {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    border: 1px solid #444;
+    background-color: #333;
+    text-align: center;
+    text-decoration: none;
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+.search-actions {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.search-actions .action-button:nth-child(2) {
+    margin-left: 1rem;
+}
+
+#thumbnail-controls {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+#thumbnail-controls button {
+    padding: 0.4rem 1rem;
+    cursor: pointer;
+    border: 1px solid #444;
+    background-color: #333;
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+#thumbnail-controls button.active {
+    background-color: #4a90e2;
+    color: white;
+    border-color: #4a90e2;
+}
+
+#lightbox-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+}
+
+#lightbox-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#lightbox-image {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+#lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 30px;
+    color: #fff;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+
+.lightbox-nav button {
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    padding: 15px;
+    cursor: pointer;
+    font-size: 24px;
+    border-radius: 5px;
+}
+
+.lightbox-info {
+    color: #fff;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.6);
+    max-width: 80%;
+    padding: 1rem;
+    border-radius: 5px;
+    margin-top: 1rem;
+}
+
+.lightbox-info .action-button {
+    display: inline-block;
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+    margin-top: 1rem; /* Use margin-top instead of margin-bottom */
+    margin-bottom: 0;
+}
+
+.lightbox-info h4, .lightbox-info p {
+	margin: 0;
+    padding-bottom: 0.5rem;
+}
+
+#lightbox-loading-indicator {
+    color: white;
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+}
+
+#pagination button {
+    padding: 0.5rem 1rem;
+    margin: 0 0.2rem;
+    cursor: pointer;
+    border: 1px solid #444;
+    background-color: #333;
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+#pagination button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* --- Index Page Specific Styles --- */
+.index-page-container {
+    max-width: 600px;
+    margin: auto;
+}
+
+.image-counter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 2rem;
+}
+
+.image-counter img {
+    height: 136px;
+}
+
+/* --- Batch Actions Page Styles --- */
+.page-actions {
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.batch-gallery .thumb {
+    width: 250px; /* FIX: Added 'px' unit */
+    border: 2px solid #444; /* Use border to show selection */
+    padding: 0.3rem;
+    box-sizing: border-box;
+    position: relative;
+    user-select: none;
+    cursor: pointer;
+}
+
+.batch-gallery .thumb.selected {
+    border-color: #4a90e2;
+}
+
+.batch-gallery .thumb img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    pointer-events: none; /* Child elements don't interfere with click */
+}
+
+#selection-controls {
+    text-align: center;
+    margin: 1rem 0;
+}
+
+#selection-controls button {
+    padding: 0.5rem 1rem;
+    margin: 0 0.2rem;
+    cursor: pointer;
+    border: 1px solid #444;
+    background-color: #333;
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+#selection-controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+#batch-edit-form {
+    position: relative;
+    max-width: 600px;
+    margin: 1rem auto;
+    border: 1px solid #444;
+    padding: 1rem;
+    background: #2a2a2a;
+    border-radius: 4px;
+}
+
+#batch-edit-form label {
+    display: block;
+    margin: 0.5rem 0;
+    font-weight: bold;
+}
+
+#batch-edit-form input[type="text"] {
+    width: 100%;
+    padding: 0.4rem;
+    box-sizing: border-box;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    background-color: #333;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+#batch-edit-form button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+#batch-edit-form select {
+    padding: 0.4rem;
+    background-color: #333;
+    color: #e0e0e0;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+#applyActionBtn {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+}
+
+#applyActionBtn.delete {
+    background-color: #d32f2f;
+}
+
+/* --- Help Page Styles --- */
+.help-page {
+    max-width: 800px;
+    margin: auto;
+    text-align: left;
+}
+
+.help-page h2 {
+    margin-top: 2rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 0.5rem;
+}
+
+.help-page ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.help-page li {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    margin-bottom: 0.5rem;
+    padding: 1rem;
+    border-radius: 4px;
+    line-height: 1.5;
+}
+
+.help-page code {
+    background-color: #333;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 1.1em;
+    color: #ff9800;
+}
+
+.help-page .example-list li {
+    padding: 0.5rem 1rem;
+}
+
+/* --- Tag Manager Page Styles --- */
+.tag-manager-container { /* Renamed for clarity */
+    max-width: 800px;
+    margin: auto;
+    text-align: left;
+}
+
+a.back.action-button {
+    font-size: 0.8rem;
+    margin-bottom: 2rem;
+}
+
+.tag-manager-container .edit-form input[type="text"], 
+.tag-manager-container .edit-form select {
+    padding: 0.5rem;
+    border: 1px solid #444;
+    font-size: 0.9rem;
+    background-color: #333;
+    color: #e0e0e0;
+    border-radius: 4px;
+}
+
+.tag-list {
+    list-style-type: none;
+    padding: 0;
+    min-height: 50px;
+}
+
+.tag-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #333;
+}
+
+.tag-item:last-child {
+    border-bottom: none;
+}
+
+.tag-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tag-name-link {
+    font-weight: bold;
+    text-decoration: none;
+    color: #e0e0e0;
+}
+
+.tag-name-link:hover {
+    text-decoration: underline;
+}
+
+.tag-count {
+    font-size: 0.9em;
+    color: #aaaaaa;
+    margin-left: 0.5rem;
+}
+
+.tag-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Button color overrides */
+.tag-controls .action-button,
+.tag-manager-container .edit-form .action-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.edit-btn { background-color: #4a90e2; color: white; border-color: #4a90e2; }
+.rename-btn { background-color: #4a90e2; color: white; border-color: #4a90e2; }
+.merge-btn { background-color: #28a745; color: white; border-color: #28a745; }
+.force-delete-btn { background-color: #d32f2f; color: white; border-color: #d32f2f; }
+.cancel-btn { background-color: #6c757d; color: white; border-color: #6c757d; }
+
+.tag-manager-container .edit-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+.edit-form.hidden {
+    display: none;
+}
+
+.edit-form span {
+    align-self: center;
+    font-size: 0.9rem;
+    color: #aaaaaa;
+}
+
+#loading-message {
+    text-align: center;
+    color: #aaaaaa;
+    padding: 1rem;
+}
+
+/* --- Image Detail Page Styles (Moved from inline) --- */
+.detail-page-container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.detail-page-container .detail-image {
+    max-width: 100%;
+    max-height: 75vh;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+}
+
+.detail-page-container .edit-form {
+    width: 100%;
+    max-width: 700px;
+    text-align: center;
+}
+
+.detail-page-container .edit-form label {
+    display: block;
+    margin: 1rem 0 0.5rem 0;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center; 
+}
+
+.detail-page-container .edit-form textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 0.7rem;
+    font-size: 1.1rem;
+    font-family: sans-serif;
+    box-sizing: border-box;
+    border: 1px solid #444;
+    background-color: #333;
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+    resize: vertical;
+    border-radius: 4px;
+}
+
+.detail-page-container .form-actions {
+    display: inline-block;
+    padding-bottom: 2rem;
+}
+
+.detail-page-container .form-actions .action-button {
+    text-decoration: none;
+    color: white;
+    font-size: 1rem;
+    padding: 0.8rem 1.5rem;
+    margin: 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.detail-page-container .back-button {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.detail-page-container .save-button {
+    background-color: #4a90e2;
+    border-color: #4a90e2;
+}
+
+/* --- Toast Notifications --- */
+#toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.toast {
+    padding: 15px 20px;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    opacity: 1;
+    transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
+}
+
+.toast-success {
+    background-color: #4CAF50; /* Green */
+}
+
+.toast-error {
+    background-color: #f44336; /* Red */
+}
+
+.toast-info {
+    background-color: #2196F3; /* Blue */
+}
+
+.toast.fade-out {
+    opacity: 0;
+    transform: translateX(100%);
+}

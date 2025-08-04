@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Edit Image {{ image.id }} - local-booru</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="detail-page-container">
+        <h1>Edit Image #{{ image.id }}</h1>
+
+        <img src="/media/images/{{ image.filename }}" alt="Image {{ image.id }}" class="detail-image">
+
+        <form class="edit-form" action="/retag/{{ image.id }}" method="post" autocomplete="off">
+            <label for="tags">Tags:</label>
+            <div class="autocomplete-container">
+                <textarea
+                    name="tags"
+                    id="tags"
+                    placeholder="e.g. cat, cute, sunset"
+                >{{ tags_str }}</textarea>
+                <div class="suggestions"></div>
+            </div>
+
+            <div class="form-actions">
+                <a href="javascript:history.back()" class="action-button back-button">Back</a>
+                <button type="submit" class="action-button save-button">Save Tags</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="/static/js/autocomplete.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tagInput = document.getElementById('tags');
+            const suggestionsBox = document.querySelector('.suggestions');
+            setupTagAutocomplete(tagInput, suggestionsBox);
+        });
+    </script>
+</body>
+</html>

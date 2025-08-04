@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database
+database.db
+*.sqlite
+*.sqlite3
+
+# Media Files
+/media/
+
+# Undo State File
+undo_state.json
+
+# IDE / OS specific
+.vscode/
+.idea/
+.DS_Store

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Batch Tag Edit - local-booru</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body>
+    <h1>Batch Edit</h1>
+
+    <form class="search-form" action="/batch_actions" method="get" autocomplete="off">
+        <div class="autocomplete-container">
+            <input
+                type="text"
+                id="search-input"
+                name="q"
+                value="{{ query }}"
+                placeholder="Search tags (e.g. cat, sunset)"
+                autocomplete="off"
+            />
+            <div id="suggestions-search" class="suggestions"></div>
+        </div>
+        <button type="submit">Search</button>
+    </form>
+
+    <div class="page-actions">
+        <a href="/gallery?q={{ query }}" class="action-button batch-action-button">Back to Gallery</a>
+    </div>
+
+    <div id="selection-controls">
+        <button type="button" id="selectAllBtn">Select All on Page</button>
+        <button type="button" id="deselectAllBtn">Deselect All on Page</button>
+        <button type="button" id="clearAllBtn">Clear All Selections</button>
+        <button type="button" id="undoBtn">Undo Last Batch Action</button>
+    </div>
+
+    <div id="gallery-grid" class="gallery batch-gallery">
+        <!-- Images loaded by JavaScript -->
+    </div>
+
+    <div id="pagination" style="text-align: center; margin-top: 2rem;"></div>
+
+    <div id="batch-edit-form">
+        <h3>Batch Actions (<span id="selected-count">0</span> images selected)</h3>
+        <div>
+            <select id="actionSelect">
+                <option value="add">Add Tags</option>
+                <option value="remove">Remove Tags</option>
+                <option value="replace">Replace Tags</option>
+                <option value="delete">Delete Images</option>
+            </select>
+        </div>
+        <div id="tags-input-container">
+            <label for="batchTagsInput">Tags (comma-separated):</label>
+            <div class="autocomplete-container">
+                <input
+                    type="text"
+                    id="batchTagsInput"
+                    name="tags"
+                    placeholder="e.g. cat, cute, sunset"
+                    autocomplete="off"
+                />
+                <div id="suggestions-batch" class="suggestions"></div>
+            </div>
+        </div>
+        <button type="button" id="applyActionBtn">Apply Action</button>
+    </div>
+
+    <script src="/static/js/autocomplete.js"></script>
+	<script src="/static/js/notifications.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // --- Configuration ---
+        const IMAGES_PER_PAGE = 42;
+
+        // --- DOM Element References ---
+        const galleryGrid = document.getElementById('gallery-grid');
+        const paginationDiv = document.getElementById('pagination');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const batchTagsInput = document.getElementById('batchTagsInput');
+        const actionSelect = document.getElementById('actionSelect');
+        const tagsInputContainer = document.getElementById('tags-input-container');
+
+        // --- State Variables ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const query = urlParams.get('q') || "";
+        let currentPage = parseInt(urlParams.get('page')) || 1;
+        let currentImagesOnPage = [];
+        let isLoading = false;
+        
+        let selectedImageIds = new Set(JSON.parse(localStorage.getItem('batchSelectedImageIds') || "[]"));
+
+        // --- Core Functions ---
+
+        async function loadPage(pageToLoad = 1) {
+            // ... (This function is unchanged)
+            if (isLoading) return;
+            isLoading = true;
+            galleryGrid.innerHTML = '<p>Loading images...</p>';
+            currentPage = pageToLoad;
+            const newUrl = `/batch_actions?q=${encodeURIComponent(query)}&page=${currentPage}`;
+            window.history.pushState({ page: currentPage, query: query }, '', newUrl);
+            try {
+                const response = await fetch(`/api/images?q=${encodeURIComponent(query)}&page=${currentPage}&limit=${IMAGES_PER_PAGE}`);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+                currentImagesOnPage = data.images;
+                renderGallery(data.images);
+                updatePaginationControls(data.total);
+            } catch (err) {
+                console.error("Failed to load images:", err);
+                galleryGrid.innerHTML = '<p style="text-align: center; color: #ff6b6b;">Error loading images.</p>';
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        function renderGallery(images) {
+            // ... (This function is unchanged)
+            galleryGrid.innerHTML = '';
+            if (images.length === 0) {
+                galleryGrid.innerHTML = '<p style="text-align: center;">No images found.</p>';
+                return;
+            }
+            images.forEach(img => {
+                const thumb = document.createElement('div');
+                thumb.className = 'thumb';
+                thumb.dataset.imageId = img.id;
+                if (selectedImageIds.has(img.id)) {
+                    thumb.classList.add('selected');
+                }
+                thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy"><div class="tags">${img.tags.join(', ') || 'No tags'}</div>`;
+                galleryGrid.appendChild(thumb);
+            });
+        }
+        
+        function updatePaginationControls(totalImages) {
+            // ... (This function is unchanged)
+            const totalPages = Math.ceil(totalImages / IMAGES_PER_PAGE);
+            paginationDiv.innerHTML = '';
+            if (totalImages === 0) return;
+            paginationDiv.innerHTML = `<p style="margin-bottom: 0.5rem;">Page ${currentPage} of ${totalPages} (${totalImages} images)</p><button id="prev-page" ${currentPage <= 1 ? 'disabled' : ''}>← Previous</button><button id="next-page" ${currentPage >= totalPages ? 'disabled' : ''}>Next →</button>`;
+            document.getElementById('prev-page').addEventListener('click', () => loadPage(currentPage - 1));
+            document.getElementById('next-page').addEventListener('click', () => loadPage(currentPage + 1));
+        }
+
+        function updateSelection() {
+            // ... (This function is unchanged)
+            selectedCountSpan.textContent = selectedImageIds.size;
+            localStorage.setItem('batchSelectedImageIds', JSON.stringify(Array.from(selectedImageIds)));
+        }
+
+        // --- Batch Action Handlers ---
+
+        async function handleApplyAction() {
+            const selectedAction = actionSelect.value;
+            const imageIds = Array.from(selectedImageIds);
+
+            if (imageIds.length === 0) {
+                showToast("Please select at least one image.", 'info'); // REPLACED
+                return;
+            }
+
+            if (selectedAction === 'delete') {
+                await handleBatchDelete(imageIds);
+            } else {
+                await handleBatchRetag(imageIds, selectedAction);
+            }
+        }
+
+        async function handleBatchDelete(imageIds) {
+            const confirmed = await showConfirmation(`Are you sure you want to PERMANENTLY DELETE ${imageIds.length} selected image(s)? This cannot be undone.`); // REPLACED
+            if (!confirmed) {
+                return;
+            }
+
+            const payload = new FormData();
+            imageIds.forEach(id => payload.append("image_ids", id));
+
+            try {
+                const response = await fetch('/api/images/batch_delete', { method: 'POST', body: payload });
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showToast(result.message || 'Images deleted successfully.', 'success'); // REPLACED
+                    selectedImageIds.clear();
+                    updateSelection();
+                    loadPage(currentPage);
+                } else {
+                    showToast(result.detail || 'Deletion failed.', 'error'); // REPLACED
+                }
+            } catch (error) {
+                console.error('Error during batch deletion:', error);
+                showToast('An unexpected error occurred during deletion.', 'error'); // REPLACED
+            }
+        }
+
+        async function handleBatchRetag(imageIds, action) {
+            const tags = batchTagsInput.value.trim();
+            if (!tags) {
+                showToast(`The '${action}' action requires at least one tag.`, 'info'); // REPLACED
+                return;
+            }
+
+            const payload = new FormData();
+            payload.append("tags", tags);
+            payload.append("action", action);
+            imageIds.forEach(id => payload.append("image_ids", id));
+
+            try {
+                const response = await fetch("/batch_retag", { method: "POST", body: payload });
+                const result = await response.json();
+
+                if (response.ok) {
+                    showToast(result.message || 'Tags updated successfully!', 'success'); // REPLACED
+                    batchTagsInput.value = "";
+                    loadPage(currentPage);
+                } else {
+                    showToast(result.detail || 'Tag update failed.', 'error'); // REPLACED
+                }
+            } catch (err) {
+                console.error("Error submitting batch edit:", err);
+                showToast("An unexpected error occurred. Check console.", 'error'); // REPLACED
+            }
+        }
+        
+        function toggleTagInputVisibility() {
+            // ... (This function is unchanged)
+            const isDelete = actionSelect.value === 'delete';
+            tagsInputContainer.style.display = isDelete ? 'none' : 'block';
+            document.getElementById('applyActionBtn').classList.toggle('delete', isDelete);
+        }
+
+        // --- Initialization and Event Listeners ---
+        
+        function initializeEventListeners() {
+            galleryGrid.addEventListener('click', (e) => {
+                // ... (This part is unchanged)
+                const thumb = e.target.closest('.thumb');
+                if (thumb) {
+                    const id = parseInt(thumb.dataset.imageId);
+                    if (selectedImageIds.has(id)) {
+                        selectedImageIds.delete(id);
+                    } else {
+                        selectedImageIds.add(id);
+                    }
+                    thumb.classList.toggle('selected');
+                    updateSelection();
+                }
+            });
+
+            // Selection controls
+			// Selection controls
+            document.getElementById('selectAllBtn').addEventListener('click', () => {
+                // Iterate over the images currently on the page
+                currentImagesOnPage.forEach(img => selectedImageIds.add(img.id));
+                // Update the visual selection for all thumbnails
+                galleryGrid.querySelectorAll('.thumb').forEach(thumb => thumb.classList.add('selected'));
+                updateSelection();
+            });
+
+            document.getElementById('deselectAllBtn').addEventListener('click', () => {
+                // Iterate over the images currently on the page
+                currentImagesOnPage.forEach(img => selectedImageIds.delete(img.id));
+                // Update the visual selection for all thumbnails
+                galleryGrid.querySelectorAll('.thumb').forEach(thumb => thumb.classList.remove('selected'));
+                updateSelection();
+            });
+            
+            // NOTE: The event listener is now async to allow for 'await'
+            document.getElementById('clearAllBtn').addEventListener('click', async () => {
+                const confirmed = await showConfirmation("Are you sure you want to clear all selections?"); // REPLACED
+                if (confirmed) {
+                    selectedImageIds.clear();
+                    updateSelection();
+                    galleryGrid.querySelectorAll('.thumb.selected').forEach(thumb => thumb.classList.remove('selected'));
+                    showToast("All selections cleared.", 'info'); // REPLACED
+                }
+            });
+
+            // Action controls
+            document.getElementById('undoBtn').addEventListener('click', async () => {
+                const confirmed = await showConfirmation("Are you sure you want to undo the last batch tag operation?"); // REPLACED
+                if (!confirmed) return;
+                
+                try {
+                    const response = await fetch("/batch_undo", { method: "POST" });
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        showToast(result.message || 'Undo successful!', 'success'); // REPLACED
+                        selectedImageIds.clear();
+                        updateSelection();
+                        loadPage(currentPage);
+                    } else {
+                        showToast(result.detail || 'Undo failed.', 'error'); // REPLACED
+                    }
+                } catch (err) {
+                    console.error("Error with undo:", err);
+                    showToast("An unexpected error occurred during undo.", 'error'); // REPLACED
+                }
+            });
+            
+            actionSelect.addEventListener('change', toggleTagInputVisibility);
+            document.getElementById('applyActionBtn').addEventListener('click', handleApplyAction);
+
+            window.addEventListener('popstate', (e) => { /* ... unchanged ... */ });
+        }
+
+        // --- Initial Page Load ---
+        const searchInput = document.getElementById('search-input');
+        const suggestionsSearchBox = document.getElementById('suggestions-search');
+        setupTagAutocomplete(searchInput, suggestionsSearchBox);
+        const suggestionsBatchBox = document.getElementById('suggestions-batch');
+        setupTagAutocomplete(batchTagsInput, suggestionsBatchBox);
+        initializeEventListeners();
+        toggleTagInputVisibility();
+        updateSelection();
+        loadPage(currentPage);
+    });
+    </script>
+</body>
+</html>

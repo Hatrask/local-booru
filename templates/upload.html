@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Upload Images - local-booru</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="upload-form-container">
+        <h1>Upload Images</h1>
+        <form id="uploadForm" class="upload-form" action="/upload" method="post" enctype="multipart/form-data" autocomplete="off">
+            <label for="file">Select image files:</label>
+            <input type="file" name="files" id="file" multiple required>
+
+            <div id="preview-container"></div>
+
+            <label for="tagInput">Tags (comma-separated):</label>
+            <div class="autocomplete-container">
+                <input
+                    type="text"
+                    name="tags"
+                    id="tagInput"
+                    placeholder="e.g. cat, cute"
+                    autocomplete="off"
+                >
+                <div class="suggestions"></div>
+            </div>
+
+            <button type="submit" id="upload-button" class="action-button">Upload</button>
+        </form>
+
+        <div id="upload-status"></div>
+        <a href="/" class="action-button">Back to Home</a>
+    </div>
+
+    <script src="/static/js/autocomplete.js"></script>
+
+    <script>
+        // Initialize the autocomplete for this page
+        document.addEventListener('DOMContentLoaded', () => {
+            const tagInput = document.getElementById('tagInput');
+            const suggestionsBox = document.querySelector('.suggestions');
+            setupTagAutocomplete(tagInput, suggestionsBox);
+        });
+
+        // --- File preview and upload feedback (retains the original logic) ---
+        const fileInput = document.getElementById('file');
+        const previewContainer = document.getElementById('preview-container');
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadStatusDiv = document.getElementById('upload-status');
+        const tagInput = document.getElementById('tagInput');
+
+        fileInput.addEventListener('change', () => {
+            previewContainer.innerHTML = '';
+            const files = fileInput.files;
+            if (files) {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'preview-thumb';
+                            previewContainer.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+            }
+        });
+
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            uploadStatusDiv.textContent = 'Uploading...';
+            uploadStatusDiv.style.color = 'black';
+
+            const uploadButton = document.getElementById('upload-button');
+            uploadButton.disabled = true;
+            uploadButton.textContent = 'Uploading...';
+
+            try {
+                const formData = new FormData(uploadForm);
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    let result = {};
+                    if (contentType && contentType.includes('application/json')) {
+                        try {
+                            result = await response.json();
+                        } catch (jsonError) {
+                            console.error('Error parsing JSON:', jsonError);
+                        }
+                    }
+                    
+                    const message = result.message || 'Upload successful.';
+                    uploadStatusDiv.textContent = message;
+                    uploadStatusDiv.style.color = 'green';
+                    
+                    fileInput.value = '';
+                    tagInput.value = '';
+                    previewContainer.innerHTML = '';
+                } else {
+                    let errorText = 'Upload failed: An unknown error occurred.';
+                    try {
+                        const error = await response.json();
+                        errorText = `Upload failed: ${error.detail || error.message}`;
+                    } catch (jsonError) {
+                        console.error('Error parsing error JSON:', jsonError);
+                        errorText = `Upload failed: Server responded with status ${response.status}.`;
+                    }
+                    uploadStatusDiv.textContent = errorText;
+                    uploadStatusDiv.style.color = 'red';
+                }
+            } catch (error) {
+                console.error('Error during upload:', error);
+                uploadStatusDiv.textContent = 'An unexpected network error occurred.';
+                uploadStatusDiv.style.color = 'red';
+            } finally {
+                uploadButton.disabled = false;
+                uploadButton.textContent = 'Upload';
+            }
+        });
+    </script>
+</body>
+</html>

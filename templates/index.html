@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Homepage - local-booru</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="index-page-container">
+        <h1>local-booru</h1>
+
+        <nav>
+            <a href="/upload">Upload</a>
+            <a href="/gallery">Gallery</a>
+            <a href="/batch_actions">Batch Actions</a>
+            <a href="/tag_manager">Tag Manager</a>
+            <a href="/help">Help</a>
+        </nav>
+
+        <form class="search-form-index" action="/gallery" method="get">
+            <div class="autocomplete-container">
+                <input
+                    type="text"
+                    name="q"
+                    id="search-input"
+                    placeholder="Search tags..."
+                    autocomplete="off"
+                    required
+                />
+                <div class="suggestions"></div>
+            </div>
+            <button type="submit">Search</button>
+        </form>
+
+        <div id="image-counter" class="image-counter"></div>
+        <p>Serving {{ image_count }} images. local-booru v1.0.0</p>
+    </div>
+
+    <script src="/static/js/autocomplete.js"></script>
+
+    <script>
+        // Initialize the autocomplete for the search input on this page
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('search-input');
+            const suggestionsBox = searchInput.nextElementSibling; // The div immediately following the input
+            setupTagAutocomplete(searchInput, suggestionsBox);
+
+            // Get the image count from the server-side rendered value
+            const imageCount = parseInt('{{ image_count }}');
+            displayImageCount(imageCount);
+        });
+
+        // Function to display the animated counter
+        function displayImageCount(count) {
+            const counterElement = document.getElementById('image-counter');
+            if (!counterElement) return;
+
+            // Clear any existing digits
+            counterElement.innerHTML = '';
+            
+            const countString = count.toString();
+            
+            // Loop through each digit and create an img element for it
+            for (const digit of countString) {
+                const img = document.createElement('img');
+                // The filename is assumed to be in the format: image_<digit>.png
+                img.src = `/static/img/counter/image_${digit}.gif`; // Adjust the path if needed
+                img.alt = digit;
+                counterElement.appendChild(img);
+            }
+        }
+    </script>
+</body>
+</html>

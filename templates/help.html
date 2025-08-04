@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Help - local-booru</title>
+    <link rel="stylesheet" href="/static/css/styles.css" />
+</head>
+<body class="help-page">
+    <h1>Help & User Guide</h1>
+    <p>Welcome to local-booru! This guide explains how to use all the features of the site.</p>
+
+    <!-- Section 1: Uploading -->
+    <h2>1. Uploading Images</h2>
+    <p>
+        The first step is to add images to your collection. Navigate to the <a href="/upload">Upload</a> page to get started.
+    </p>
+    <ul>
+        <li>
+            <strong>Selecting Files:</strong> Click the "Select image files" button to open a file dialog. You can select multiple image files at once. A small preview of each selected image will appear.
+        </li>
+        <li>
+            <strong>Initial Tagging:</strong> Before you upload, you can add tags in the "Tags (comma-separated)" box. Every image in the batch will receive these initial tags. This is great for adding an artist's name or a common theme to a set of images.
+        </li>
+        <li>
+            <strong>Uploading:</strong> Click the "Upload" button. The page will show a success message when the process is complete, and you can then select more files to upload.
+        </li>
+    </ul>
+
+    <!-- Section 2: The Gallery & Searching -->
+    <h2>2. The Gallery & Searching</h2>
+    <p>
+        The <a href="/gallery">Gallery</a> is the main page for viewing your collection. From here, you can browse, search, and inspect your images.
+    </p>
+    <ul>
+        <li>
+            <strong>Thumbnail Size:</strong> Use the "Small," "Medium," and "Large" buttons at the top to change the size of the image thumbnails. Your preference is saved in your browser.
+        </li>
+        <li>
+            <strong>Lightbox Viewer:</strong> Clicking on any thumbnail opens a full-size image viewer (a "lightbox"). You can navigate between images using the arrow buttons or your keyboard.
+        </li>
+        <li>
+            <strong>Editing from the Lightbox:</strong> Inside the lightbox, you will see the image's ID and its current tags. Click the "Edit Tags" button to go to a dedicated page to modify them.
+        </li>
+    </ul>
+
+    <h3>Using the Search Bar</h3>
+    <p>The search bar is the most powerful tool for finding specific images. Here’s how to use its syntax.</p>
+    
+    <h4>Basic Search (AND Logic)</h4>
+	<p>
+		Tags are separated by commas (<code>,</code>) or the word <code>AND</code>. This finds images that have <strong>all</strong> of the specified tags.
+	</p>
+    <ul class="example-list">
+        <li><code>cat, dog</code> - Finds images tagged with both <code>cat</code> AND <code>dog</code>.</li>
+		<li><code>cat AND dog</code> - Same as above.</li>
+    </ul>
+
+    <h4>Advanced Operators</h4>
+    <ul>
+        <li>
+            <strong>OR Logic:</strong> To find images that have at least one of several tags, use parentheses with a vertical bar (<code>|</code>) or the word <code>OR</code>.
+            <ul class="example-list">
+                <li><code>(cat|dog)</code> - Finds images with either the <code>cat</code> OR <code>dog</code> tag.</li>
+                <li><code>(cat OR dog)</code> - Same as above.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Exclusion (NOT):</strong> To exclude images with a certain tag, prefix it with a hyphen (<code>-</code>).
+            <ul class="example-list">
+                <li><code>-dog</code> - Finds all images that do NOT have the <code>dog</code> tag.</li>
+                <li><code>(cat OR dog), -blue</code> - Finds images tagged with <code>cat</code> or <code>dog</code>, but NOT <code>blue</code>.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h4>Wildcard Search</h4>
+    <p>
+        Use an asterisk (<code>*</code>) as a wildcard to match parts of a tag.
+    </p>
+    <ul class="example-list">
+        <li><code>cat*</code> - Finds tags starting with "cat," like <code>caterpillar</code> or <code>catgirl</code>.</li>
+        <li><code>*cat</code> - Finds tags ending in "cat," like <code>wildcat</code> or <code>bobcat</code>.</li>
+        <li><code>*at*</code> - Finds tags containing "at," like <code>cat</code>, <code>hat</code>, or <code>batman</code>.</li>
+    </ul>
+
+    <h4>Special Queries</h4>
+    <ul class="example-list">
+        <li><code>untagged</code> - A special keyword to find all images that have no tags assigned to them.</li>
+    </ul>
+
+    <!-- Section 3: Advanced Management -->
+    <h2>3. Advanced Management</h2>
+    <p>For power users, the Batch Actions and Tag Manager pages provide tools for large-scale organization.</p>
+    
+    <h3>Batch Actions</h3>
+    <p>The <a href="/batch_actions">Batch Actions</a> page allows you to edit or delete many images at once.</p>
+    <ul>
+        <li>1. First, perform a search in the gallery to get the set of images you want to work on.</li>
+        <li>2. Click the "Batch Actions" button.</li>
+        <li>3. Select images by clicking on them. Your selection is saved as you navigate between pages.</li>
+        <li>4. Use the form at the bottom to choose an action (Add, Remove, Replace, or Delete) and specify tags if needed.</li>
+        <li>5. Click "Apply Action" to modify all selected images. <strong>Be careful with "Delete Images," as this is permanent!</strong></li>
+    </ul>
+
+    <h3>Tag Manager</h3>
+    <p>The <a href="/tag_manager">Tag Manager</a> is for cleaning up the tags themselves, not the images.</p>
+    <ul>
+        <li>
+            <strong>Rename:</strong> Changes a tag's name everywhere it's used. (e.g., renaming <code>car</code> to <code>automobile</code>).
+        </li>
+        <li>
+            <strong>Merge:</strong> Combines two tags. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).
+        </li>
+        <li>
+            <strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong>
+        </li>
+    </ul>
+
+    <!-- Section 4: Keyboard Shortcuts -->
+    <h2>4. Keyboard Shortcuts</h2>
+    <p>You can navigate the site quickly using your keyboard.</p>
+    <ul>
+        <li>
+            <strong>Gallery Page:</strong>
+            <ul>
+                <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
+                <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
+            </ul>
+        </li>
+        <li>
+            <strong>Lightbox Viewer:</strong>
+            <ul>
+                <li><code>A</code> or <code>ArrowLeft</code>: View the previous image.</li>
+                <li><code>D</code> or <code>ArrowRight</code>: View the next image.</li>
+                <li><code>Escape</code>: Close the lightbox.</li>
+            </ul>
+        </li>
+    </ul>
+
+
+    <nav>
+        <a href="/">Home</a>
+        <a href="/upload">Upload</a>
+        <a href="/gallery">Gallery</a>
+        <a href="/batch_actions">Batch Actions</a>
+        <a href="/tag_manager">Tag Manager</a>
+    </nav>
+</body>
+</html>
