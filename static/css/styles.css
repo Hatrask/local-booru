@@ -321,6 +321,10 @@ form.search-form-index button:hover {
 /* --- Help Page --- */
 .help-page { max-width: 800px; margin: auto; text-align: left; }
 .help-page li { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; padding: 1rem; border-radius: var(--border-radius); line-height: 1.5; }
+.help-page ul, .help-page ol {
+    list-style-type: none;
+    padding: 0;
+}
 
 /* --- Tag Manager Page --- */
 .tag-manager-container { max-width: 800px; margin: auto; text-align: left; }
