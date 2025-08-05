@@ -78,6 +78,19 @@ Follow these steps to get `local-booru` running on your local machine.
 
 ## Maintenance
 
+### Exporting Your Collection
+
+A command-line script is provided to export your entire collection into a single `.zip` file. This is perfect for creating backups or migrating to another system without any data loss.
+
+1.  Navigate to the project's root directory in your terminal.
+2.  Run the script:
+    ```bash
+    python export_collection.py
+    ```
+3.  A file named `booru_export.zip` will be created. This archive contains:
+    *   A `metadata.json` file with information about every image and its associated tags.
+    *   An `images/` folder containing all of your uploaded media.
+
 ### Factory Reset
 
 If you wish to completely erase all data and start over, a command-line script is provided. **This is a destructive, irreversible action.**
@@ -86,18 +99,19 @@ If you wish to completely erase all data and start over, a command-line script i
 2.  Navigate to the project's root directory in your terminal.
 3.  Run the script:
     ```bash
-    python reset_application.py
+    python reset_app.py
     ```
-4.  The script will ask for a final confirmation. Type `yes` to proceed.
+4.  The script will ask for a final confirmation. Type `reset my booru` to proceed.
 5.  Once the script is finished, you can restart the application server for a fresh start.
 
-### File Structure
+## File Structure
 
 Your data is stored in the root directory of the project.
 
 *   `database.db`: The SQLite database file containing all image and tag information. It is automatically created and managed by the application.
 *   `media/images/`: All your uploaded image files are stored here.
 *   `undo_state.json`: This file is created temporarily when you perform a batch tag action, allowing you to undo it. It is deleted after a successful undo or overwritten by the next batch action.
+*   `booru_export.zip`: The default output file created when you run the export script.
 
 ## Contributing
 

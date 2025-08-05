@@ -9,10 +9,22 @@
     <h1>Help & User Guide</h1>
     <p>Welcome to local-booru! This guide explains how to use all the features of the site.</p>
 
+    <!-- Table of Contents -->
+    <div class="toc">
+        <strong>Table of Contents</strong>
+        <ul>
+            <li><a href="#uploading">1. Uploading Images</a></li>
+            <li><a href="#gallery">2. The Gallery & Searching</a></li>
+            <li><a href="#advanced">3. Advanced Management</a></li>
+            <li><a href="#cli">4. Command-Line Utilities</a></li>
+            <li><a href="#shortcuts">5. Keyboard Shortcuts</a></li>
+        </ul>
+    </div>
+
     <!-- Section 1: Uploading -->
-    <h2>1. Uploading Images</h2>
+    <h2 id="uploading">1. Uploading Images</h2>
     <p>
-        The first step is to add images to your collection. Navigate to the <a href="/upload">Upload</a> page to get started.
+        The first step is to add images to your collection. Navigate to the <strong><a href="/upload">Upload</a></strong> page to get started.
     </p>
     <ul>
         <li>
@@ -22,14 +34,14 @@
             <strong>Initial Tagging:</strong> Before you upload, you can add tags in the "Tags (comma-separated)" box. Every image in the batch will receive these initial tags. This is great for adding an artist's name or a common theme to a set of images.
         </li>
         <li>
-            <strong>Uploading:</strong> Click the "Upload" button. The page will show a success message when the process is complete, and you can then select more files to upload.
+            <strong>Uploading:</strong> Click the "Upload" button. The page will show a success message when the process is complete. The system automatically detects and skips any images you've already uploaded.
         </li>
     </ul>
 
     <!-- Section 2: The Gallery & Searching -->
-    <h2>2. The Gallery & Searching</h2>
+    <h2 id="gallery">2. The Gallery & Searching</h2>
     <p>
-        The <a href="/gallery">Gallery</a> is the main page for viewing your collection. From here, you can browse, search, and inspect your images.
+        The <strong><a href="/gallery">Gallery</a></strong> is the main page for viewing your collection. From here, you can browse, search, and inspect your images.
     </p>
     <ul>
         <li>
@@ -89,21 +101,21 @@
     </ul>
 
     <!-- Section 3: Advanced Management -->
-    <h2>3. Advanced Management</h2>
+    <h2 id="advanced">3. Advanced Management</h2>
     <p>For power users, the Batch Actions and Tag Manager pages provide tools for large-scale organization.</p>
     
     <h3>Batch Actions</h3>
-    <p>The <a href="/batch_actions">Batch Actions</a> page allows you to edit or delete many images at once.</p>
+    <p>The <strong><a href="/batch_actions">Batch Actions</a></strong> page allows you to edit or delete many images at once.</p>
     <ol>
         <li>1. First, use the search bar to find the set of images you want to work on.</li>
         <li>2. Select images by clicking on them. Your selection is saved as you navigate between pages.</li>
-        <li>3. Use the form at the bottom to choose an action (Add, Remove, Replace, or Delete) and specify tags if needed.</li>
+        <li>3. Use the form at the bottom to choose an action (<strong>Add, Remove, Replace, or Delete</strong>) and specify tags if needed.</li>
         <li>4. Click "Apply Action" to modify all selected images. <strong>Be careful with "Delete Images," as this is permanent!</strong></li>
         <li>5. You can undo the last tag edit (add/remove/replace) with the "Undo Last Tag Edit" button. This does not work for deletions.</li>
     </ol>
 
     <h3>Tag Manager</h3>
-    <p>The <a href="/tag_manager">Tag Manager</a> is for cleaning up the tags themselves, not the images.</p>
+    <p>The <strong><a href="/tag_manager">Tag Manager</a></strong> is for cleaning up the tags themselves, not the images.</p>
     <ul>
         <li>
             <strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).
@@ -116,24 +128,39 @@
         </li>
     </ul>
     
+    <!-- Section 4: Command-Line Utilities -->
+    <h2 id="cli">4. Command-Line Utilities</h2>
+    <p>
+        Some maintenance tasks are performed using scripts from the command line, not the web interface. You must have terminal access to the server where the application is running to use these tools.
+    </p>
+
+    <h3>Exporting Your Collection</h3>
+    <p>
+        You can create a complete backup of your collection in a single `.zip` file. This is perfect for backups or migrating your collection to another system without losing any data.
+    </p>
+    <ol>
+        <li>Navigate to the application's root directory in your terminal.</li>
+        <li>Run the script using the command: <code>python export_collection.py</code></li>
+        <li>A file named <code>booru_export.zip</code> will be created, containing all images and a `metadata.json` file with all tag information.</li>
+    </ol>
+    
     <div class="danger-zone">
         <h3>Danger Zone: Factory Reset</h3>
         <p>
             If you want to completely wipe all data and start over, you can use the provided command-line script. This is a highly destructive and irreversible action that will delete all images, tags, and the entire database.
         </p>
-        <p><strong>This feature cannot be accessed from the web interface.</strong> You must have command-line access to the server where the application is running.</p>
         <h4>How to perform a factory reset:</h4>
         <ol>
             <li>1. <strong>Stop the application server.</strong> This is critical to ensure the database file is not locked.</li>
             <li>2. Navigate to the application's root directory in your terminal.</li>
-            <li>3. Run the script using the command: <code>python reset_application.py</code></li>
-            <li>4. The script will ask for a final confirmation. You must type <code>yes</code> to proceed.</li>
+            <li>3. Run the script using the command: <code>python reset_app.py</code></li>
+            <li>4. The script will ask for a final confirmation. You must type <code>reset my booru</code> to proceed.</li>
             <li>5. Once the script is finished, you can restart the application server. It will be in a clean, factory-new state.</li>
         </ol>
     </div>
 
-    <!-- Section 4: Keyboard Shortcuts -->
-    <h2>4. Keyboard Shortcuts</h2>
+    <!-- Section 5: Keyboard Shortcuts -->
+    <h2 id="shortcuts">5. Keyboard Shortcuts</h2>
     <p>You can navigate the site quickly using your keyboard.</p>
     <ul>
         <li>
