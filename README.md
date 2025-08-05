@@ -7,21 +7,21 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
 
 ## Features
 
-*   **Image Uploading:** Upload multiple images at once and assign initial tags to the whole batch.
-*   **Powerful Tagging System:** A robust many-to-many relationship between images and tags. Edit tags on individual images or in bulk.
-*   **Advanced Search:** Find exactly what you're looking for with a search syntax that supports:
-    *   **AND** logic (`tag1, tag2`)
-    *   **OR** logic (`(tag1 | tag2)`)
-    *   **NOT** logic (`-tag3`)
-    *   **Wildcards** (`art*`)
-    *   A special `untagged` query to find images that need organizing.
-*   **Interactive Gallery:**
-    *   A clean, paginated view of your images.
-    *   Adjustable thumbnail sizes (Small, Medium, Large) that are saved to your browser.
-    *   A full-screen lightbox viewer with keyboard navigation (`A`/`D` or Arrow Keys).
-*   **Batch Editing:** Select images across multiple pages to add, remove, or completely replace their tags in one go. You can also batch delete images.
-*   **Persistent Undo for Tag Edits:** Accidentally changed the tags on 100 images? A single click on the "Undo Last Tag Edit" button on the Batch Actions page will revert the last batch **tagging** operation. The undo state persists even if you've restarted the server. (Note: This does not apply to batch deletions).
-*   **Tag Management:** A dedicated page to clean up your tag list by renaming, merging duplicates (e.g., merge `cat` and `kitty`), or force-deleting tags entirely.
+*   **Duplicate-Aware Uploads:** Upload multiple images at once. The system calculates a SHA256 hash for each file and automatically ignores any duplicates, ensuring a clean media library.
+*   **Flexible Tagging:** The core of the application is built on a many-to-many relationship between images and tags. Tags can be managed individually or through powerful batch actions.
+*   **Comprehensive Search:** A search bar with a dedicated query syntax supports finding images by a combination of tags. Includes support for:
+    *   `AND` logic (`tag1, tag2`)
+    *   `OR` logic (`(tag1 | tag2)`)
+    *   `NOT` logic (`-tag3`)
+    *   `Wildcard` matching (`art*`)
+    *   A special `untagged` keyword.
+*   **Gallery & Viewer:** A paginated thumbnail grid for browsing the collection. Thumbnail sizes are configurable (S/M/L) and saved in the browser. Includes a full-screen lightbox viewer with keyboard navigation for cycling through images.
+*   **Batch Actions:** A dedicated page for modifying large sets of images at once. Selections are persistent across pages, allowing you to add, remove, or replace tags, or to permanently delete images in bulk.
+*   **Persistent Undo:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after restarting the application.
+*   **Tag Management:** A dedicated page for database-level tag maintenance, essential for keeping a tag library clean and organized.
+    *   Filter tags by name and view unused (orphan) tags.
+    *   Sort tags alphabetically or by image count.
+    *   Rename, merge, and force-delete tags.
 
 ## Getting Started
 
