@@ -1,4 +1,4 @@
-import shutil, os, uuid, json
+import shutil, os, uuid, json, hashlib
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,7 +18,7 @@ class RenameTagRequest(BaseModel):
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
-    version="1.0.0", # Updated version for release
+    version="1.0.0",
 )
 
 # --- Constants ---
@@ -57,6 +57,7 @@ class Image(Base):
     __tablename__ = 'images'
     id = Column(Integer, primary_key=True)
     filename = Column(String, unique=True, nullable=False)
+    sha256_hash = Column(String(64), unique=True, nullable=False, index=True)
     tags = relationship("Tag", secondary=tags_table, back_populates="images")
 
 class Tag(Base):
@@ -77,8 +78,19 @@ def get_db():
 
 # --- Helper Functions ---
 
+def calculate_sha256(file_like_object) -> str:
+    """Calculates the SHA256 hash of a file-like object in a memory-efficient way."""
+    sha256_hash = hashlib.sha256()
+    # Reset file pointer to the beginning
+    file_like_object.seek(0)
+    # Read and update hash in chunks of 4K
+    for byte_block in iter(lambda: file_like_object.read(4096), b""):
+        sha256_hash.update(byte_block)
+    # Reset file pointer again for subsequent operations (like saving)
+    file_like_object.seek(0)
+    return sha256_hash.hexdigest()
+
 def get_or_create_tags(db: Session, tag_names: set) -> List[Tag]:
-    # ... (This function remains unchanged)
     tags_to_process = []
     if not tag_names:
         return tags_to_process
@@ -93,7 +105,6 @@ def get_or_create_tags(db: Session, tag_names: set) -> List[Tag]:
     return tags_to_process
 
 # --- Frontend Page Routes ---
-# ... (All page routes remain unchanged) ...
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
     image_count = db.query(Image).count()
@@ -130,7 +141,6 @@ def image_detail_page(request: Request, image_id: int, db: Session = Depends(get
     })
 
 # --- API Endpoints ---
-# ... (Upload, Retag, API Get Images, etc. remain unchanged) ...
 
 @app.post("/upload")
 def upload_images(
@@ -141,19 +151,39 @@ def upload_images(
     tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
     tags_to_add = get_or_create_tags(db, tag_names)
     uploaded_count = 0
+    
+    # Get all existing hashes from the DB to check against.
+    # This is more efficient than one query per file if uploading many files.
+    existing_hashes = {res[0] for res in db.query(Image.sha256_hash).all()}
+
     for file in files:
+        # Calculate the hash of the uploaded file
+        file_hash = calculate_sha256(file.file)
+
+        # If hash already exists, silently skip this file
+        if file_hash in existing_hashes:
+            continue
+        
         try:
             extension = os.path.splitext(file.filename)[1].lstrip('.')
             if not extension: extension = "jpg"
         except IndexError:
             extension = "jpg"
+            
         unique_filename = f"{uuid.uuid4().hex}.{extension}"
         path = f"media/images/{unique_filename}"
+        
         with open(path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        image = Image(filename=unique_filename, tags=tags_to_add)
+            
+        # Add the new image with its hash to the database
+        image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
         db.add(image)
+        
+        # Add the new hash to our set to prevent duplicate uploads within the same batch
+        existing_hashes.add(file_hash)
         uploaded_count += 1
+        
     db.commit()
     return JSONResponse(
         {"message": f"{uploaded_count} image(s) uploaded successfully."},
@@ -314,7 +344,6 @@ def batch_undo(db: Session = Depends(get_db)):
 
 @app.get("/api/tags/summary")
 def api_get_tags_summary(db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     tags_with_counts = (db.query(Tag, func.count(tags_table.c.image_id)).outerjoin(tags_table).group_by(Tag.id).order_by(Tag.name).all())
     untagged_count = db.query(Image).filter(~Image.tags.any()).count()
     tags_data = [{"id": tag.id, "name": tag.name, "count": count} for tag, count in tags_with_counts]
@@ -322,7 +351,6 @@ def api_get_tags_summary(db: Session = Depends(get_db)):
 
 @app.post("/api/tags/force_delete/{tag_id}")
 def api_force_delete_tag(tag_id: int, db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag: raise HTTPException(status_code=404, detail="Tag not found.")
     tag.images.clear()
@@ -332,7 +360,6 @@ def api_force_delete_tag(tag_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/tags/rename/{tag_id}")
 def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     tag_to_rename = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag_to_rename: raise HTTPException(status_code=404, detail="Tag to rename not found.")
     new_name_clean = request.new_name.strip().lower()
@@ -344,7 +371,6 @@ def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends
 
 @app.post("/api/tags/merge")
 def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form(...), db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     if tag_id_to_keep == tag_id_to_delete: raise HTTPException(status_code=400, detail="Cannot merge a tag with itself.")
     tag_to_keep = db.query(Tag).filter(Tag.id == tag_id_to_keep).first()
     tag_to_delete = db.query(Tag).options(orm.selectinload(Tag.images)).filter(Tag.id == tag_id_to_delete).first()

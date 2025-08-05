@@ -3,12 +3,11 @@
 A simple, self-hosted image gallery (booru) with a focus on powerful tagging and a clean, single-user interface. This project is designed for individuals who want to organize their personal image collections locally with the privacy and control of self-hosting.
 
 ![Gallery Screenshot](https://i.ibb.co/KzXXbhrJ/2025-08-04-19-31.jpg)
-
 ![](https://i.ibb.co/nNwd88cc/2025-08-04-19-31-1.jpg)
 
 ## Features
 
-*   **Simple Uploading:** Upload multiple images at once and assign initial tags to the whole batch.
+*   **Image Uploading:** Upload multiple images at once and assign initial tags to the whole batch.
 *   **Powerful Tagging System:** A robust many-to-many relationship between images and tags. Edit tags on individual images or in bulk.
 *   **Advanced Search:** Find exactly what you're looking for with a search syntax that supports:
     *   **AND** logic (`tag1, tag2`)
@@ -21,7 +20,7 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
     *   Adjustable thumbnail sizes (Small, Medium, Large) that are saved to your browser.
     *   A full-screen lightbox viewer with keyboard navigation (`A`/`D` or Arrow Keys).
 *   **Batch Editing:** Select images across multiple pages to add, remove, or completely replace their tags in one go. You can also batch delete images.
-*   **Persistent Undo:** Accidentally changed the tags on 100 images? A single click on the "Undo" button on the Batch Actions page will revert the last batch operation, even if you've restarted the server.
+*   **Persistent Undo for Tag Edits:** Accidentally changed the tags on 100 images? A single click on the "Undo Last Tag Edit" button on the Batch Actions page will revert the last batch **tagging** operation. The undo state persists even if you've restarted the server. (Note: This does not apply to batch deletions).
 *   **Tag Management:** A dedicated page to clean up your tag list by renaming, merging duplicates (e.g., merge `cat` and `kitty`), or force-deleting tags entirely.
 
 ## Getting Started
@@ -77,13 +76,28 @@ Follow these steps to get `local-booru` running on your local machine.
 4.  **Edit:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page where you can update its tags.
 5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
 
-## File Structure
+## Maintenance
+
+### Factory Reset
+
+If you wish to completely erase all data and start over, a command-line script is provided. **This is a destructive, irreversible action.**
+
+1.  **Stop the application server.** This is a critical step to prevent file-locking errors.
+2.  Navigate to the project's root directory in your terminal.
+3.  Run the script:
+    ```bash
+    python reset_application.py
+    ```
+4.  The script will ask for a final confirmation. Type `yes` to proceed.
+5.  Once the script is finished, you can restart the application server for a fresh start.
+
+### File Structure
 
 Your data is stored in the root directory of the project.
 
-*   `database.db`: This is the SQLite database file containing all information about your images and tags. **Do not delete this file unless you want to start over.**
+*   `database.db`: The SQLite database file containing all image and tag information. It is automatically created and managed by the application.
 *   `media/images/`: All your uploaded image files are stored here.
-*   `undo_state.json`: This file is created temporarily when you perform a batch action, allowing you to undo it. It is deleted automatically after a successful undo.
+*   `undo_state.json`: This file is created temporarily when you perform a batch tag action, allowing you to undo it. It is deleted after a successful undo or overwritten by the next batch action.
 
 ## Contributing
 
