@@ -384,4 +384,5 @@ def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    # Change host to 127.0.0.1 if you don't want other devices in your LAN being able to access this app
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
