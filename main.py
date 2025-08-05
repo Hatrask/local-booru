@@ -18,7 +18,7 @@ class RenameTagRequest(BaseModel):
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 # --- Constants ---
@@ -108,7 +108,8 @@ def get_or_create_tags(db: Session, tag_names: set) -> List[Tag]:
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
     image_count = db.query(Image).count()
-    return templates.TemplateResponse("index.html", {"request": request, "image_count": image_count})
+    latest_version = app.version
+    return templates.TemplateResponse("index.html", {"request": request, "image_count": image_count, "latest_version": latest_version})
 
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request):
