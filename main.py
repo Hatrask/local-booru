@@ -18,7 +18,7 @@ class RenameTagRequest(BaseModel):
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
-    version="1.0.0", # Updated version for release
+    version="1.0.0",
 )
 
 # --- Constants ---
@@ -78,7 +78,6 @@ def get_db():
 # --- Helper Functions ---
 
 def get_or_create_tags(db: Session, tag_names: set) -> List[Tag]:
-    # ... (This function remains unchanged)
     tags_to_process = []
     if not tag_names:
         return tags_to_process
@@ -93,7 +92,6 @@ def get_or_create_tags(db: Session, tag_names: set) -> List[Tag]:
     return tags_to_process
 
 # --- Frontend Page Routes ---
-# ... (All page routes remain unchanged) ...
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
     image_count = db.query(Image).count()
@@ -130,7 +128,6 @@ def image_detail_page(request: Request, image_id: int, db: Session = Depends(get
     })
 
 # --- API Endpoints ---
-# ... (Upload, Retag, API Get Images, etc. remain unchanged) ...
 
 @app.post("/upload")
 def upload_images(
@@ -314,7 +311,6 @@ def batch_undo(db: Session = Depends(get_db)):
 
 @app.get("/api/tags/summary")
 def api_get_tags_summary(db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     tags_with_counts = (db.query(Tag, func.count(tags_table.c.image_id)).outerjoin(tags_table).group_by(Tag.id).order_by(Tag.name).all())
     untagged_count = db.query(Image).filter(~Image.tags.any()).count()
     tags_data = [{"id": tag.id, "name": tag.name, "count": count} for tag, count in tags_with_counts]
@@ -322,7 +318,6 @@ def api_get_tags_summary(db: Session = Depends(get_db)):
 
 @app.post("/api/tags/force_delete/{tag_id}")
 def api_force_delete_tag(tag_id: int, db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag: raise HTTPException(status_code=404, detail="Tag not found.")
     tag.images.clear()
@@ -332,7 +327,6 @@ def api_force_delete_tag(tag_id: int, db: Session = Depends(get_db)):
 
 @app.post("/api/tags/rename/{tag_id}")
 def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     tag_to_rename = db.query(Tag).filter(Tag.id == tag_id).first()
     if not tag_to_rename: raise HTTPException(status_code=404, detail="Tag to rename not found.")
     new_name_clean = request.new_name.strip().lower()
@@ -344,7 +338,6 @@ def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends
 
 @app.post("/api/tags/merge")
 def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form(...), db: Session = Depends(get_db)):
-    # ... (This function remains unchanged) ...
     if tag_id_to_keep == tag_id_to_delete: raise HTTPException(status_code=400, detail="Cannot merge a tag with itself.")
     tag_to_keep = db.query(Tag).filter(Tag.id == tag_id_to_keep).first()
     tag_to_delete = db.query(Tag).options(orm.selectinload(Tag.images)).filter(Tag.id == tag_id_to_delete).first()

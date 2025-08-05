@@ -68,7 +68,6 @@ form.search-form-index input[type="text"] {
     outline: none;
     background-color: #333;
     color: #e0e0e0;
-    /* Fixes tiny gap between input and button */
     border-radius: 4px 0 0 4px;
 }
 
@@ -209,7 +208,7 @@ form.search-form-index button:hover {
     max-width: 100%;
     height: auto;
     cursor: pointer;
-    display: block; /* Fixes small gap below image */
+    display: block;
 }
 
 .tags {
@@ -345,7 +344,7 @@ form.search-form-index button:hover {
     display: inline-block;
     background-color: #4a90e2;
     border-color: #4a90e2;
-    margin-top: 1rem; /* Use margin-top instead of margin-bottom */
+    margin-top: 1rem;
     margin-bottom: 0;
 }
 
@@ -403,8 +402,8 @@ form.search-form-index button:hover {
 }
 
 .batch-gallery .thumb {
-    width: 250px; /* FIX: Added 'px' unit */
-    border: 2px solid #444; /* Use border to show selection */
+    width: 250px;
+    border: 2px solid #444;
     padding: 0.3rem;
     box-sizing: border-box;
     position: relative;
@@ -421,7 +420,7 @@ form.search-form-index button:hover {
     height: auto;
     display: block;
     margin: 0 auto;
-    pointer-events: none; /* Child elements don't interfere with click */
+    pointer-events: none;
 }
 
 #selection-controls {
@@ -538,7 +537,7 @@ form.search-form-index button:hover {
 }
 
 /* --- Tag Manager Page Styles --- */
-.tag-manager-container { /* Renamed for clarity */
+.tag-manager-container {
     max-width: 800px;
     margin: auto;
     text-align: left;
@@ -641,7 +640,7 @@ a.back.action-button {
     padding: 1rem;
 }
 
-/* --- Image Detail Page Styles (Moved from inline) --- */
+/* --- Image Detail Page Styles --- */
 .detail-page-container {
     max-width: 1200px;
     margin: 2rem auto;
