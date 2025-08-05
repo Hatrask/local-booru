@@ -15,6 +15,7 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
     *   `NOT` logic (`-tag3`)
     *   `Wildcard` matching (`art*`)
     *   A special `untagged` keyword.
+*   **Saved Searches:** Automatically remembers your recent search queries for quick recall. "Pin" your most-used or complex searches for permanent, prioritized access. A dedicated management page allows you to view, pin, and delete all saved queries.
 *   **Gallery & Viewer:** A paginated thumbnail grid for browsing the collection. Thumbnail sizes are configurable (S/M/L) and saved in the browser. Includes a full-screen lightbox viewer with keyboard navigation for cycling through images.
 *   **Batch Actions:** A dedicated page for modifying large sets of images at once. Selections are persistent across pages, allowing you to add, remove, or replace tags, or to permanently delete images in bulk.
 *   **Persistent Undo:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after restarting the application.
@@ -72,9 +73,10 @@ Follow these steps to get `local-booru` running on your local machine.
 
 1.  **Upload:** Go to the "Upload" page to add your first images.
 2.  **Browse:** Navigate to the "Gallery" to see your collection.
-3.  **Search:** Use the search bar at the top of the gallery to filter your images. Click the "Help" link for a full guide on the search syntax.
+3.  **Search:** Use the search bar at the top of the gallery to filter your images. Click an empty search bar to see your saved and recent queries. Click the "Help" link for a full guide on the search syntax.
 4.  **Edit:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page where you can update its tags.
 5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
+6.  **Manage Searches:** Visit the "Saved Searches" page to organize your pinned and recent search queries.
 
 ## Maintenance
 
@@ -112,6 +114,8 @@ Your data is stored in the root directory of the project.
 *   `media/images/`: All your uploaded image files are stored here.
 *   `undo_state.json`: This file is created temporarily when you perform a batch tag action, allowing you to undo it. It is deleted after a successful undo or overwritten by the next batch action.
 *   `booru_export.zip`: The default output file created when you run the export script.
+
+**Note:** Saved searches are stored directly in your web browser's `localStorage` and are not part of the server-side file structure.
 
 ## Contributing
 
