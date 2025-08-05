@@ -10,7 +10,8 @@ database.db
 *.sqlite3
 
 # Media Files
-/media/
+media/*
+!media/.gitkeep
 
 # Undo State File
 undo_state.json
