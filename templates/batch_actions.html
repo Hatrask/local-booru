@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8" />
-    <title>Batch Tag Edit - local-booru</title>
+    <title>Batch Actions - local-booru</title>
     <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
-    <h1>Batch Edit</h1>
+    <h1>Batch Actions</h1>
 
     <form class="search-form" action="/batch_actions" method="get" autocomplete="off">
         <div class="autocomplete-container">
@@ -211,6 +211,8 @@
                 if (response.ok) {
                     showToast(result.message || 'Tags updated successfully!', 'success');
                     batchTagsInput.value = "";
+					selectedImageIds.clear();
+					updateSelection();
                     loadPage(currentPage);
                 } else {
                     showToast(result.detail || 'Tag update failed.', 'error');
