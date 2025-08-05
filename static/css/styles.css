@@ -1,7 +1,30 @@
 /* ==========================================================================
-   1. Root Variables & Global Styles
+   STYLESHEET TABLE OF CONTENTS
+   ==========================================================================
+   1. Global Styles & Root Variables
+      - CSS Custom Properties (:root)
+      - Body & Typography (body, h1, a, code, etc.)
+
+   2. Reusable Components
+      - 2.1 Autocomplete
+      - 2.2 Generic Action Button
+      - 2.3 Toast Notifications
+
+   3. Page-Specific Styles
+      - 3.1 Index Page
+      - 3.2 Upload Page
+      - 3.3 Gallery & Lightbox
+      - 3.4 Image Detail Page
+      - 3.5 Batch Actions Page
+      - 3.6 Tag Manager Page
+      - 3.7 Saved Searches Page
+      - 3.8 Help Page
    ========================================================================== */
 
+
+/* ==========================================================================
+   1. Global Styles & Root Variables
+   ========================================================================== */
 :root {
     /* Colors */
     --color-bg-primary: #121212;
@@ -57,7 +80,7 @@ code {
    2. Reusable Components
    ========================================================================== */
 
-/* --- Autocomplete --- */
+/* --- 2.1 Autocomplete --- */
 .autocomplete-container {
     position: relative;
     width: 100%;
@@ -69,7 +92,7 @@ code {
     top: 100%;
     left: 0;
     width: 100%;
-    max-height: 150px;
+    max-height: 300px;
     overflow-y: auto;
     background: var(--color-bg-tertiary);
     border: 1px solid var(--color-border);
@@ -81,18 +104,70 @@ code {
     border-radius: 0 0 var(--border-radius) var(--border-radius);
 }
 
-.suggestions div {
-    padding: 0.6rem;
+.suggestions > div {
+    padding: 0.8rem 1rem;
     cursor: pointer;
     color: var(--color-text-primary);
+    line-height: 1.4;
 }
 
-.suggestions div:hover,
-.suggestions .highlight {
+.suggestions > div:hover,
+.suggestions > div.highlight {
     background-color: var(--color-border);
 }
 
-/* --- Generic Action Button --- */
+.suggestion-item-saved {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.suggestion-text {
+    flex-grow: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 1rem;
+}
+
+.suggestion-controls {
+    display: flex;
+    gap: 0.8rem;
+    flex-shrink: 0;
+}
+
+.suggestion-controls button {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 1.1em;
+    padding: 0;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    appearance: none;
+}
+.suggestion-controls button:hover {
+    opacity: 1;
+    color: var(--color-accent);
+}
+
+.suggestions-header {
+    padding: 0.6rem 1rem;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--color-border);
+    cursor: default;
+}
+.suggestions-header:hover {
+    background-color: var(--color-bg-primary);
+}
+
+
+/* --- 2.2 Generic Action Button --- */
 .action-button {
     display: inline-block;
     padding: 0.5rem 1rem;
@@ -106,7 +181,8 @@ code {
     border-radius: var(--border-radius);
 }
 
-/* --- Toast Notifications --- */
+
+/* --- 2.3 Toast Notifications --- */
 #toast-container {
     position: fixed;
     bottom: 20px;
@@ -136,8 +212,9 @@ code {
    3. Page-Specific Styles
    ========================================================================== */
 
-/* --- Index & Global Search Forms --- */
-form.search-form,
+/* --- 3.1 Index Page --- */
+.index-page-container { max-width: 600px; margin: auto; }
+
 form.search-form-index {
     margin: 0.7rem auto;
     display: flex;
@@ -145,7 +222,6 @@ form.search-form-index {
     align-items: center;
 }
 
-form.search-form input[type="text"],
 form.search-form-index input[type="text"] {
     width: 100%;
     padding: 0.7rem;
@@ -159,7 +235,6 @@ form.search-form-index input[type="text"] {
     border-radius: var(--border-radius) 0 0 var(--border-radius);
 }
 
-form.search-form button,
 form.search-form-index button {
     padding: 0.7rem 1.2rem;
     font-size: 1.1rem;
@@ -171,17 +246,15 @@ form.search-form-index button {
     transition: background-color 0.2s;
     border-radius: 0 var(--border-radius) var(--border-radius) 0;
 }
-
-form.search-form button:hover,
 form.search-form-index button:hover {
     background-color: var(--color-accent-hover);
 }
 
-.index-page-container { max-width: 600px; margin: auto; }
 .image-counter { display: flex; justify-content: center; align-items: center; gap: 0.25rem; margin-top: 2rem; }
 .image-counter img { height: 136px; }
 
-/* --- Upload Page --- */
+
+/* --- 3.2 Upload Page --- */
 .upload-form-container { max-width: 600px; margin: auto; }
 .upload-form label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
 .upload-form input[type="file"] { margin-bottom: 1rem; }
@@ -219,7 +292,43 @@ form.search-form-index button:hover {
     border-radius: var(--border-radius);
 }
 
-/* --- Gallery & Lightbox --- */
+
+/* --- 3.3 Gallery & Lightbox --- */
+form.search-form {
+    margin: 0.7rem auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+form.search-form input[type="text"] {
+    width: 100%;
+    padding: 0.7rem;
+    font-size: 1.1rem;
+    box-sizing: border-box;
+    border: 1px solid var(--color-border);
+    border-right: none;
+    outline: none;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border-radius: var(--border-radius) 0 0 var(--border-radius);
+}
+
+form.search-form button {
+    padding: 0.7rem 1.2rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+    border: 1px solid var(--color-accent);
+    background-color: var(--color-accent);
+    color: white;
+    outline: none;
+    transition: background-color 0.2s;
+    border-radius: 0 var(--border-radius) var(--border-radius) 0;
+}
+form.search-form button:hover {
+    background-color: var(--color-accent-hover);
+}
+
 .gallery { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
 .thumb { width: var(--thumb-width); box-sizing: border-box; text-align: center; position: relative; overflow: hidden; border-radius: var(--border-radius); }
 .thumb img { max-width: 100%; height: auto; cursor: pointer; display: block; }
@@ -262,6 +371,7 @@ form.search-form-index button:hover {
 .lightbox-info .action-button { background-color: var(--color-accent); border-color: var(--color-accent); margin-top: 1rem; }
 .lightbox-info h4, .lightbox-info p { margin: 0; padding-bottom: 0.5rem; }
 
+#pagination { text-align: center; }
 #pagination button {
     padding: 0.5rem 1rem; margin: 0 0.2rem; cursor: pointer;
     border: 1px solid var(--color-border); background-color: var(--color-bg-tertiary);
@@ -269,7 +379,8 @@ form.search-form-index button:hover {
 }
 #pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
 
-/* --- Image Detail Page --- */
+
+/* --- 3.4 Image Detail Page --- */
 .detail-page-container { max-width: 1200px; margin: 2rem auto; display: flex; flex-direction: column; align-items: center; }
 .detail-page-container .detail-image { max-width: 100%; max-height: 75vh; margin-bottom: 1rem; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); border-radius: var(--border-radius); }
 .detail-page-container .edit-form { width: 100%; max-width: 700px; text-align: center; }
@@ -293,7 +404,8 @@ form.search-form-index button:hover {
 .detail-page-container .back-button { background-color: var(--color-neutral); border-color: var(--color-neutral); color: white; }
 .detail-page-container .save-button { background-color: var(--color-accent); border-color: var(--color-accent); color: white; }
 
-/* --- Batch Actions Page --- */
+
+/* --- 3.5 Batch Actions Page --- */
 #selection-controls, .page-actions { text-align: center; margin: 1rem 0; }
 .batch-gallery .thumb { border: 2px solid var(--color-border); padding: 0.3rem; user-select: none; cursor: pointer; }
 .batch-gallery .thumb.selected { border-color: var(--color-accent); }
@@ -318,47 +430,8 @@ form.search-form-index button:hover {
 #applyActionBtn { background-color: var(--color-accent); color: white; border: none; }
 #applyActionBtn.danger { background-color: var(--color-danger); }
 
-/* --- Help Page --- */
-.help-page { max-width: 800px; margin: auto; text-align: left; }
-.help-page li { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; padding: 1rem; border-radius: var(--border-radius); line-height: 1.5; }
-.help-page ul, .help-page ol {
-    list-style-type: none;
-    padding: 0;
-}
 
-/* Styles for the Table of Contents */
-.toc {
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
-    margin: 2rem 0; /* Adds space above and below the box */
-}
-.toc strong {
-    display: block;
-    font-size: 1.2em;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border); /* Consistent with h2 style */
-}
-.toc ul {
-    list-style: none;
-    padding-left: 1rem; /* Indent the list items slightly */
-    margin: 0;
-}
-.toc li {
-    /* These rules OVERRIDE the generic .help-page li styles below */
-    background: none;
-    border: none;
-    padding: 0.4rem 0; /* Add vertical spacing between ToC items */
-    margin: 0;
-    line-height: 1.4; /* Adjust line height for readability */
-}
-.toc li a:hover {
-    text-decoration: underline; /* Classic, clear feedback for links */
-}
-
-/* --- Tag Manager Page --- */
+/* --- 3.6 Tag Manager Page --- */
 .tag-manager-container { max-width: 800px; margin: auto; text-align: left; }
 .tag-manager-container a.back.action-button { margin-bottom: 2rem; display: inline-block; }
 .tag-manager-controls { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; padding: 1rem; margin-bottom: 1.5rem; background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: var(--border-radius); }
@@ -384,19 +457,93 @@ form.search-form-index button:hover {
 .tag-count { font-size: 0.9em; color: var(--color-text-secondary); margin-left: 0.5rem; }
 .tag-controls { display: flex; gap: 0.5rem; }
 .tag-controls .action-button, .tag-manager-container .edit-form .action-button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-.edit-btn { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
-.rename-btn { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
+.edit-btn, .rename-btn { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
 .merge-btn { background-color: var(--color-success); color: white; border-color: var(--color-success); }
 .force-delete-btn { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 .cancel-btn { background-color: var(--color-neutral); color: white; border-color: var(--color-neutral); }
 .tag-manager-container .edit-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; padding: 1rem; background-color: var(--color-bg-tertiary); border-top: 1px solid var(--color-border); border-radius: 0 0 var(--border-radius) var(--border-radius); }
 .tag-manager-container .edit-form.hidden { display: none; }
-.tag-manager-container .edit-form input[type="text"] {
-    padding: 0.5rem;
-    font-size: 0.9rem;
-    background-color: var(--color-bg-secondary);
-}
+.tag-manager-container .edit-form input[type="text"] { padding: 0.5rem; font-size: 0.9rem; background-color: var(--color-bg-secondary); }
 .tag-manager-container .edit-form .cancel-btn { margin-left: auto; }
 .edit-action-group { display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; }
 .edit-action-group input[type="text"] { flex-grow: 1; }
 #loading-message { text-align: center; color: var(--color-text-secondary); padding: 2rem; }
+
+
+/* --- 3.7 Saved Searches Page --- */
+.saved-searches-container { max-width: 900px; margin: auto; text-align: left; }
+.search-list { list-style: none; padding: 0; margin-top: 1rem; }
+.search-item {
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin-bottom: 0.5rem;
+    padding: 0.8rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.search-item-query {
+    flex-grow: 1;
+    margin-right: 1rem;
+    color: var(--color-text-primary);
+}
+.search-item-query:hover { text-decoration: underline; }
+.search-item-controls { display: flex; gap: 1rem; }
+.search-item-controls button {
+    background: none; border: none; font-size: 1.2em;
+    color: var(--color-text-secondary); cursor: pointer;
+    opacity: 0.7; transition: opacity 0.2s;
+}
+.search-item-controls button:hover { opacity: 1; color: var(--color-accent); }
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.5rem;
+}
+.section-header button.clear-btn {
+    font-size: 0.8rem;
+    background-color: var(--color-danger);
+    color: white;
+    border-color: var(--color-danger);
+}
+
+
+/* --- 3.8 Help Page --- */
+.help-page { max-width: 800px; margin: auto; text-align: left; }
+.help-page li { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; padding: 1rem; border-radius: var(--border-radius); line-height: 1.5; }
+.help-page ul, .help-page ol {
+    list-style-type: none;
+    padding: 0;
+}
+
+.toc {
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin: 2rem 0;
+}
+.toc strong {
+    display: block;
+    font-size: 1.2em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.toc ul {
+    list-style: none;
+    padding-left: 1rem;
+    margin: 0;
+}
+.toc li {
+    background: none;
+    border: none;
+    padding: 0.4rem 0;
+    margin: 0;
+    line-height: 1.4;
+}
+.toc li a:hover {
+    text-decoration: underline;
+}

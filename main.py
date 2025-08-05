@@ -131,6 +131,10 @@ def tag_manager_page(request: Request):
 def help_page(request: Request):
     return templates.TemplateResponse("help.html", {"request": request})
 
+@app.get("/saved_searches", response_class=HTMLResponse)
+def saved_searches_page(request: Request):
+    return templates.TemplateResponse("saved_searches.html", {"request": request})
+
 @app.get("/image/{image_id}", response_class=HTMLResponse)
 def image_detail_page(request: Request, image_id: int, db: Session = Depends(get_db)):
     image = db.query(Image).options(orm.joinedload(Image.tags)).filter(Image.id == image_id).first()

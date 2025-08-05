@@ -34,10 +34,7 @@
         <button data-size="900">Large</button>
     </div>
 
-    <div id="gallery-grid" class="gallery">
-        <!-- Images are loaded here by JavaScript -->
-    </div>
-
+    <div id="gallery-grid" class="gallery"></div>
     <div id="pagination" style="text-align: center; margin-top: 2rem;"></div>
 
     <div id="lightbox-modal">
@@ -58,15 +55,17 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- Configuration and Constants ---
+    // --- 1. CONFIGURATION & CONSTANTS ---
     const IMAGES_PER_PAGE = 20;
     const DEFAULT_THUMB_SIZE = '250';
 
-    // --- DOM Element References ---
+    // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
     const paginationDiv = document.getElementById('pagination');
     const batchEditLink = document.getElementById('batchEditLink');
     const thumbnailControls = document.getElementById('thumbnail-controls');
+    const tagInput = document.getElementById('tagInput');
+    const suggestionsBox = document.querySelector('.suggestions');
     
     // Lightbox elements
     const lightboxModal = document.getElementById('lightbox-modal');
@@ -77,39 +76,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxInfo = document.getElementById('lightbox-info');
     const lightboxLoadingIndicator = document.getElementById('lightbox-loading-indicator');
 
-    // --- State Variables ---
+    // --- 3. STATE MANAGEMENT ---
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q') || "";
     let currentPage = parseInt(urlParams.get('page')) || 1;
     let totalPages = 0;
-    let currentImages = [];
-    let currentImageIndex = -1;
+    let currentImages = [];       // Stores the image data for the current page
+    let currentImageIndex = -1; // Index of the currently viewed image in the lightbox
     let hasMorePages = true;
-    let isLoading = false; // Prevents multiple simultaneous loads
+    let isLoading = false;        // Flag to prevent multiple simultaneous API calls
 
-    // --- Core Functions ---
+    // --- 4. CORE FUNCTIONS ---
 
     /**
      * Fetches image data from the API and orchestrates the rendering of the page.
+     * @param {number} [pageToLoad=1] - The page number to fetch and display.
      */
     async function loadPage(pageToLoad = 1) {
         if (isLoading) return;
         isLoading = true;
         
-        // Clear previous content and update state
         galleryGrid.innerHTML = '<p>Loading images...</p>'; 
         currentImages = [];
         currentPage = pageToLoad;
         
+        // Update the browser's URL to reflect the current page and query.
         const newUrl = `/gallery?q=${encodeURIComponent(query)}&page=${currentPage}`;
         window.history.pushState({ page: currentPage, query: query }, '', newUrl);
+
+        // If a search query is active, save it to the recent searches history.
+        if (query) {
+            addRecentSearch(query);
+        }
 
         try {
             const response = await fetch(`/api/images?q=${encodeURIComponent(query)}&page=${currentPage}&limit=${IMAGES_PER_PAGE}`);
             if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
             
             const data = await response.json();
-            
             currentImages = data.images;
             totalPages = Math.ceil(data.total / IMAGES_PER_PAGE);
             hasMorePages = data.has_more;
@@ -126,11 +130,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Renders the grid of image thumbnails.
-     * @param {Array} images - An array of image objects from the API.
+     * Renders the grid of image thumbnails into the gallery container.
+     * @param {Array<Object>} images - An array of image objects from the API.
      */
     function renderGallery(images) {
-        galleryGrid.innerHTML = ''; // Clear loading message
+        galleryGrid.innerHTML = '';
         if (images.length === 0) {
             galleryGrid.innerHTML = '<p style="text-align: center;">No images found.</p>';
             return;
@@ -139,13 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
         images.forEach((img, index) => {
             const thumb = document.createElement('div');
             thumb.className = 'thumb';
-            thumb.dataset.index = index; // Use index for easy access in lightbox
-
-            thumb.innerHTML = `
-                <img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy">
-                <div class="tags">${img.tags.join(', ') || 'No tags'}</div>
-            `;
-            
+            thumb.dataset.index = index;
+            // The `loading="lazy"` attribute improves performance by only loading images as they scroll into view.
+            thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy"><div class="tags">${img.tags.join(', ') || 'No tags'}</div>`;
             thumb.addEventListener('click', () => openLightbox(index));
             galleryGrid.appendChild(thumb);
         });
@@ -169,46 +169,53 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('next-page').addEventListener('click', () => loadPage(currentPage + 1));
     }
 
-    // --- Lightbox Functions ---
+    // --- 5. LIGHTBOX FUNCTIONS ---
 
+    /**
+     * Displays the lightbox modal for a specific image.
+     * @param {number} index - The index of the image to show from the `currentImages` array.
+     */
     function openLightbox(index) {
         currentImageIndex = index;
         showImageInLightbox(currentImageIndex);
         lightboxModal.style.display = 'flex';
-        document.body.style.overflow = 'hidden'; // Prevent scrolling background
+        // Prevent the main page from scrolling while the lightbox is open.
+        document.body.style.overflow = 'hidden';
     }
 
+    /**
+     * Hides the lightbox modal.
+     */
     function closeLightbox() {
         lightboxModal.style.display = 'none';
-        document.body.style.overflow = 'auto'; // Restore scrolling
+        document.body.style.overflow = 'auto';
     }
 
+    /**
+     * Loads the image and its metadata into the lightbox view.
+     * @param {number} index - The index of the image to display.
+     */
     function showImageInLightbox(index) {
         if (index < 0 || index >= currentImages.length) return;
-        
         const image = currentImages[index];
         lightboxImage.src = `/media/images/${image.filename}`;
         lightboxImage.alt = `Image ID: ${image.id}`;
-        
-        // This generates the info block, assuming .lightbox-info .action-button is styled in styles.css
-        lightboxInfo.innerHTML = `
-            <h4>Image ID: ${image.id}</h4>
-            <p>Tags: ${image.tags.join(', ') || 'No tags'}</p>
-            <a href="/image/${image.id}" class="action-button">Edit Tags</a>
-        `;
+        lightboxInfo.innerHTML = `<h4>Image ID: ${image.id}</h4><p>Tags: ${image.tags.join(', ') || 'No tags'}</p><a href="/image/${image.id}" class="action-button">Edit Tags</a>`;
     }
     
+    /**
+     * Handles navigation within the lightbox, including loading subsequent pages.
+     * @param {number} direction - `1` for next, `-1` for previous.
+     */
     async function navigateLightbox(direction) {
         const newIndex = currentImageIndex + direction;
 
-        // Navigate to next image on the current page
         if (newIndex >= 0 && newIndex < currentImages.length) {
             currentImageIndex = newIndex;
             showImageInLightbox(currentImageIndex);
             return;
         }
 
-        // Navigate across page boundaries
         if (newIndex >= currentImages.length && hasMorePages) {
             await loadNextPageInLightbox();
         } else if (newIndex < 0 && currentPage > 1) {
@@ -216,41 +223,52 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * A helper function for lightbox navigation that loads the next page of images.
+     */
     async function loadNextPageInLightbox() {
         if (isLoading) return;
         lightboxLoadingIndicator.style.display = 'block';
         await loadPage(currentPage + 1);
         lightboxLoadingIndicator.style.display = 'none';
-        openLightbox(0); // Open the first image of the new page
+        openLightbox(0); // Open the first image of the newly loaded page.
     }
 
+    /**
+     * A helper function for lightbox navigation that loads the previous page of images.
+     */
     async function loadPrevPageInLightbox() {
         if (isLoading) return;
         lightboxLoadingIndicator.style.display = 'block';
         await loadPage(currentPage - 1);
         lightboxLoadingIndicator.style.display = 'none';
-        openLightbox(currentImages.length - 1); // Open the last image of the new page
+        openLightbox(currentImages.length - 1); // Open the last image of the newly loaded page.
     }
 
-    // --- Thumbnail Size Control ---
+    // --- 6. MISC UI FUNCTIONS ---
 
+    /**
+     * Sets the CSS variable for thumbnail width and saves the preference.
+     * @param {string} size - The width in pixels (e.g., "250").
+     */
     function applyThumbSize(size) {
         document.documentElement.style.setProperty('--thumb-width', `${size}px`);
         localStorage.setItem('thumbSize', size);
-        
-        // Update active button state
         thumbnailControls.querySelector('.active')?.classList.remove('active');
         thumbnailControls.querySelector(`[data-size="${size}"]`)?.classList.add('active');
     }
 
-    // --- Event Handlers ---
+    // --- 7. EVENT HANDLERS ---
 
+    /**
+     * Handles all global keydown events for navigation shortcuts.
+     * @param {KeyboardEvent} e - The keyboard event.
+     */
     function handleKeydown(e) {
-        // Ignore key presses when typing in an input field
+        // Ignore key presses if the user is typing in an input field.
         if (e.target.matches('input, textarea')) return;
 
         if (lightboxModal.style.display === 'flex') {
-            // Lightbox navigation
             if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') navigateLightbox(1);
             else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') navigateLightbox(-1);
             else if (e.key === 'Escape') closeLightbox();
@@ -263,39 +281,45 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-    // --- Initialization ---
-
-    // Initial setup on page load
-    const savedSize = localStorage.getItem('thumbSize') || DEFAULT_THUMB_SIZE;
-    applyThumbSize(savedSize);
     
-    if (query) {
-        batchEditLink.style.display = 'inline-block';
+    /**
+     * Sets up the application by attaching event listeners and loading initial data.
+     */
+    function initialize() {
+        // Set thumbnail size from localStorage or use the default.
+        const savedSize = localStorage.getItem('thumbSize') || DEFAULT_THUMB_SIZE;
+        applyThumbSize(savedSize);
+        
+        // Only show the "Batch Actions" link if there's an active search.
+        if (query) {
+            batchEditLink.style.display = 'inline-block';
+        }
+
+        // Attach all event listeners.
+        lightboxClose.addEventListener('click', closeLightbox);
+        lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
+        lightboxNext.addEventListener('click', () => navigateLightbox(1));
+        document.addEventListener('keydown', handleKeydown);
+        thumbnailControls.addEventListener('click', (e) => {
+            if (e.target.dataset.size) {
+                applyThumbSize(e.target.dataset.size);
+            }
+        });
+        // Handle browser back/forward buttons.
+        window.addEventListener('popstate', (e) => {
+            const newPage = e.state?.page || 1;
+            if (newPage !== currentPage) loadPage(newPage);
+        });
+
+        // Set up the autocomplete for the main search bar.
+        setupTagAutocomplete(tagInput, suggestionsBox, { showSavedSearches: true });
+        
+        // Kick off the initial page load.
+        loadPage(currentPage);
     }
 
-    // Add all event listeners
-    lightboxClose.addEventListener('click', closeLightbox);
-    lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
-    lightboxNext.addEventListener('click', () => navigateLightbox(1));
-    document.addEventListener('keydown', handleKeydown);
-    thumbnailControls.addEventListener('click', (e) => {
-        if (e.target.dataset.size) {
-            applyThumbSize(e.target.dataset.size);
-        }
-    });
-    window.addEventListener('popstate', (e) => {
-        const newPage = e.state?.page || 1;
-        if (newPage !== currentPage) loadPage(newPage);
-    });
-
-    // Start the application by loading the first page of images
-    loadPage(currentPage);
-
-    // Setup autocomplete for the search input
-    const tagInput = document.getElementById('tagInput');
-    const suggestionsBox = document.querySelector('.suggestions');
-    setupTagAutocomplete(tagInput, suggestionsBox);
+    // --- 8. START THE APPLICATION ---
+    initialize();
 });
 </script>
 </body>
