@@ -7,10 +7,7 @@
 </head>
 <body>
     <div class="detail-page-container">
-        <h1>Edit Image #{{ image.id }}</h1>
-
-        <img src="/media/images/{{ image.filename }}" alt="Image {{ image.id }}" class="detail-image">
-
+	    <h1>Edit Image #{{ image.id }}</h1>
         <form class="edit-form" action="/retag/{{ image.id }}" method="post" autocomplete="off">
             <label for="tags">Tags:</label>
             <div class="autocomplete-container">
@@ -27,6 +24,8 @@
                 <button type="submit" class="action-button save-button">Save Tags</button>
             </div>
         </form>
+
+        <img src="/media/images/{{ image.filename }}" alt="Image {{ image.id }}" class="detail-image">
     </div>
 
     <script src="/static/js/autocomplete.js"></script>
