@@ -94,19 +94,19 @@
     
     <h3>Batch Actions</h3>
     <p>The <a href="/batch_actions">Batch Actions</a> page allows you to edit or delete many images at once.</p>
-    <ul>
-        <li>1. First, perform a search in the gallery to get the set of images you want to work on.</li>
-        <li>2. Click the "Batch Actions" button.</li>
-        <li>3. Select images by clicking on them. Your selection is saved as you navigate between pages.</li>
-        <li>4. Use the form at the bottom to choose an action (Add, Remove, Replace, or Delete) and specify tags if needed.</li>
-        <li>5. Click "Apply Action" to modify all selected images. <strong>Be careful with "Delete Images," as this is permanent!</strong></li>
-    </ul>
+    <ol>
+        <li>First, use the search bar to find the set of images you want to work on.</li>
+        <li>Select images by clicking on them. Your selection is saved as you navigate between pages.</li>
+        <li>Use the form at the bottom to choose an action (Add, Remove, Replace, or Delete) and specify tags if needed.</li>
+        <li>Click "Apply Action" to modify all selected images. <strong>Be careful with "Delete Images," as this is permanent!</strong></li>
+        <li>You can undo the last tag edit (add/remove/replace) with the "Undo Last Tag Edit" button. This does not work for deletions.</li>
+    </ol>
 
     <h3>Tag Manager</h3>
     <p>The <a href="/tag_manager">Tag Manager</a> is for cleaning up the tags themselves, not the images.</p>
     <ul>
         <li>
-            <strong>Rename:</strong> Changes a tag's name everywhere it's used. (e.g., renaming <code>car</code> to <code>automobile</code>).
+            <strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).
         </li>
         <li>
             <strong>Merge:</strong> Combines two tags. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).
@@ -115,6 +115,22 @@
             <strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong>
         </li>
     </ul>
+    
+    <div class="danger-zone">
+        <h3>Danger Zone: Factory Reset</h3>
+        <p>
+            If you want to completely wipe all data and start over, you can use the provided command-line script. This is a highly destructive and irreversible action that will delete all images, tags, and the entire database.
+        </p>
+        <p><strong>This feature cannot be accessed from the web interface.</strong> You must have command-line access to the server where the application is running.</p>
+        <h4>How to perform a factory reset:</h4>
+        <ol>
+            <li><strong>Stop the application server.</strong> This is critical to ensure the database file is not locked.</li>
+            <li>Navigate to the application's root directory in your terminal.</li>
+            <li>Run the script using the command: <code>python reset_application.py</code></li>
+            <li>The script will ask for a final confirmation. You must type <code>yes</code> to proceed.</li>
+            <li>Once the script is finished, you can restart the application server. It will be in a clean, factory-new state.</li>
+        </ol>
+    </div>
 
     <!-- Section 4: Keyboard Shortcuts -->
     <h2>4. Keyboard Shortcuts</h2>
@@ -136,7 +152,6 @@
             </ul>
         </li>
     </ul>
-
 
     <nav>
         <a href="/">Home</a>
