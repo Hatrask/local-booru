@@ -32,9 +32,24 @@
     <script src="/static/js/autocomplete.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+
+            // --- 1. DOM ELEMENT REFERENCES ---
             const tagInput = document.getElementById('tags');
             const suggestionsBox = document.querySelector('.suggestions');
-            setupTagAutocomplete(tagInput, suggestionsBox);
+
+            // --- 2. INITIALIZATION ---
+
+            /**
+             * Sets up the page by initializing the tag autocomplete component.
+             */
+            function initialize() {
+                // Set up autocomplete for the tag input field.
+                // Saved searches are intentionally disabled on this page.
+                setupTagAutocomplete(tagInput, suggestionsBox);
+            }
+
+            // --- 3. START THE APPLICATION ---
+            initialize();
         });
     </script>
 </body>

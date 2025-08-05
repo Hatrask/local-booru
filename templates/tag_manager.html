@@ -35,7 +35,8 @@
 	<script src="/static/js/notifications.js"></script>
 	<script>
 	document.addEventListener('DOMContentLoaded', () => {
-		// --- DOM Element References ---
+
+		// --- 1. DOM ELEMENT REFERENCES ---
 		const tagListElem = document.getElementById('tagList');
 		const loadingMessage = document.getElementById('loading-message');
 		const filterInput = document.getElementById('filter-input');
@@ -44,17 +45,18 @@
 		const showOrphansOnlyCheckbox = document.getElementById('show-orphans-only');
 		const visibleTagCountSpan = document.getElementById('visible-tag-count');
 
-		// --- State Management ---
+		// --- 2. STATE MANAGEMENT ---
 		let allTags = [];
 		let untaggedCount = 0;
 		let currentSort = 'name'; // 'name' or 'count'
 
-		// --- Core Functions ---
+		// --- 3. CORE FUNCTIONS (Filtering, Sorting, Rendering) ---
 
 		/**
-		 * Fetches the complete tag summary from the API and triggers the initial render.
+		 * Fetches the complete tag summary from the API, populates state,
+		 * and triggers the initial render.
 		 */
-		async function initialize() {
+		async function fetchAndInitialize() {
 			loadingMessage.style.display = 'block';
 			tagListElem.innerHTML = '';
 			try {
@@ -67,15 +69,15 @@
 				applyFiltersAndRender();
 			} catch (err) {
 				console.error('Error fetching tags:', err);
-				tagListElem.innerHTML = '<li style="text-align: center; color: #f44336;">Error loading tags. Please refresh the page.</li>';
+				tagListElem.innerHTML = '<li class="tag-item" style="text-align: center; color: var(--color-danger);">Error loading tags. Please refresh the page.</li>';
 			} finally {
 				loadingMessage.style.display = 'none';
 			}
 		}
 
 		/**
-		 * Applies the current filter and sort settings to the master tag list
-		 * and calls the render function.
+		 * The central function that applies the current filter and sort settings
+		 * to the master tag list and calls the render function.
 		 */
 		function applyFiltersAndRender() {
 			let tagsToRender = [...allTags];
@@ -91,7 +93,7 @@
 			if (currentSort === 'name') {
 				tagsToRender.sort((a, b) => a.name.localeCompare(b.name));
 			} else { // currentSort === 'count'
-				tagsToRender.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)); // Secondary sort by name
+				tagsToRender.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 			}
 			
 			visibleTagCountSpan.textContent = tagsToRender.length;
@@ -100,11 +102,12 @@
 
 		/**
 		 * Renders a list of tag objects into the DOM.
-		 * @param {Array<Object>} tags - The array of tag objects to render.
+		 * @param {Array<Object>} tags - The filtered and sorted array of tag objects to render.
 		 */
 		function renderTagList(tags) {
 			tagListElem.innerHTML = '';
 			
+			// Conditionally display the special "untagged" item if there are no active filters.
 			const shouldShowUntagged = untaggedCount > 0 && !filterInput.value && !showOrphansOnlyCheckbox.checked;
 			if (shouldShowUntagged) {
 				const untaggedLi = document.createElement('li');
@@ -128,7 +131,6 @@
 				const li = document.createElement('li');
 				li.className = 'tag-item';
 				li.id = `tag-item-${tag.id}`;
-
 				li.innerHTML = `
 					<div class="tag-display">
 						<div>
@@ -141,16 +143,11 @@
 						</div>
 					</div>
 					<div class="edit-form hidden" id="edit-form-${tag.id}">
-						
-						<!-- Group 1: Rename Action -->
 						<div class="edit-action-group">
 							<input type="text" value="${tag.name}" id="rename-input-${tag.id}" placeholder="New name...">
 							<button class="rename-btn action-button" data-tag-id="${tag.id}">Rename</button>
 						</div>
-
 						<span>or</span>
-
-						<!-- Group 2: Merge Action -->
 						<div class="edit-action-group merge-group">
 							<span>merge into:</span>
 							<div class="autocomplete-container merge-autocomplete">
@@ -159,7 +156,6 @@
 							</div>
 							<button class="merge-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Merge</button>
 						</div>
-
 						<button class="cancel-btn action-button" data-tag-id="${tag.id}">Cancel</button>
 					</div>
 				`;
@@ -167,10 +163,8 @@
 			});
 		}
 		
-		// --- UI Interaction ---
-
 		/**
-		 * Toggles the visibility of a tag's edit form and initializes autocomplete if needed.
+		 * Toggles the visibility of a tag's edit form and initializes its autocomplete component.
 		 * @param {string} tagId - The ID of the tag whose form should be toggled.
 		 */
 		function toggleEditForm(tagId) {
@@ -182,22 +176,22 @@
 			if (!isNowHidden) {
 				const mergeInput = document.getElementById(`merge-input-${tagId}`);
 				const suggestionsBox = document.getElementById(`suggestions-merge-${tagId}`);
-				setupTagAutocomplete(mergeInput, suggestionsBox, (selectedTag) => {
+				// This setup provides a custom `onSelect` callback to populate the hidden data attribute.
+				setupTagAutocomplete(mergeInput, suggestionsBox, { onSelect: (selectedTag) => {
 					const tagObject = allTags.find(t => t.name === selectedTag);
 					if (tagObject) {
 						mergeInput.value = selectedTag;
 						mergeInput.dataset.tagIdToKeep = tagObject.id;
 					}
-				});
-				// Focus the first input in the form
+				}});
 				form.querySelector('input[type="text"]').focus();
 			}
 		}
 
-		// --- API & State Update Handlers ---
+		// --- 4. API HANDLERS ---
 
 		/**
-		 * Handles the user's request to rename a tag.
+		 * Handles the API call to rename a tag.
 		 * @param {string} tagId - The ID of the tag to rename.
 		 */
 		async function handleRename(tagId) {
@@ -206,7 +200,6 @@
 				showToast('New tag name cannot be empty.', 'info');
 				return;
 			}
-
 			const confirmed = await showConfirmation(`Are you sure you want to rename this tag to "${newName}"?`);
 			if (!confirmed) return;
 
@@ -224,17 +217,17 @@
 				if (tagToUpdate) tagToUpdate.name = newName;
 				
 				applyFiltersAndRender();
-				toggleEditForm(tagId); // Close the form on success
 			} catch (err) {
 				showToast(`Rename failed: ${err.message}`, 'error');
-				toggleEditForm(tagId); // Also close the form on failure
-			}
+			} finally {
+                toggleEditForm(tagId); // Always close the form after an attempt.
+            }
 		}
 
 		/**
-		 * Handles the user's request to merge two tags.
+		 * Handles the API call to merge two tags.
 		 * @param {string} tagIdToDelete - The ID of the tag that will be merged and deleted.
-		 * @param {string} tagNameToDelete - The name of the tag to be deleted.
+		 * @param {string} tagNameToDelete - The name of the tag to be deleted (for confirmation dialog).
 		 */
 		async function handleMerge(tagIdToDelete, tagNameToDelete) {
 			const mergeInput = document.getElementById(`merge-input-${tagIdToDelete}`);
@@ -259,24 +252,25 @@
 				if (!response.ok) throw new Error(result.detail);
 				
 				showToast(result.message, 'success');
+				// Update counts and remove the old tag from the local state for an instant UI update.
 				const tagToDelete = allTags.find(t => t.id == tagIdToDelete);
 				const tagToKeep = allTags.find(t => t.id == tagIdToKeep);
 				if (tagToDelete && tagToKeep) {
-					tagToKeep.count += tagToDelete.count; // Correctly update the count
+					tagToKeep.count += tagToDelete.count;
 				}
-				allTags = allTags.filter(t => t.id != tagIdToDelete); // Remove the old tag
+				allTags = allTags.filter(t => t.id != tagIdToDelete);
 
 				applyFiltersAndRender();
 			} catch (err) {
 				showToast(`Merge failed: ${err.message}`, 'error');
-				toggleEditForm(tagIdToDelete); // Close form on failure
+				toggleEditForm(tagIdToDelete);
 			}
 		}
 		
 		/**
-		 * Handles the user's request to permanently delete a tag.
+		 * Handles the API call to permanently delete a tag from the database.
 		 * @param {string} tagId - The ID of the tag to delete.
-		 * @param {string} tagName - The name of the tag to delete.
+		 * @param {string} tagName - The name of the tag to delete (for confirmation dialog).
 		 */
 		async function handleForceDelete(tagId, tagName) {
 			const confirmed = await showConfirmation(`PERMANENTLY DELETE the tag "${tagName}"? This cannot be undone.`);
@@ -288,6 +282,7 @@
 				if (!response.ok) throw new Error(result.detail);
 
 				showToast(result.message, 'success');
+				// Remove the tag from local state for an instant UI update.
 				allTags = allTags.filter(t => t.id != tagId);
 				applyFiltersAndRender();
 			} catch (err) {
@@ -295,45 +290,53 @@
 			}
 		}
 
-		// --- Event Listeners Setup ---
+		// --- 5. INITIALIZATION & EVENT LISTENERS ---
 
-		filterInput.addEventListener('input', applyFiltersAndRender);
-		showOrphansOnlyCheckbox.addEventListener('change', applyFiltersAndRender);
+		/**
+		 * Attaches all event listeners for the page.
+		 */
+		function initializeEventListeners() {
+			// Listeners for the top filter/sort controls.
+			filterInput.addEventListener('input', applyFiltersAndRender);
+			showOrphansOnlyCheckbox.addEventListener('change', applyFiltersAndRender);
 
-		sortByNameBtn.addEventListener('click', () => {
-			currentSort = 'name';
-			sortByNameBtn.classList.add('active');
-			sortByCountBtn.classList.remove('active');
-			applyFiltersAndRender();
-		});
+			sortByNameBtn.addEventListener('click', () => {
+				currentSort = 'name';
+				sortByNameBtn.classList.add('active');
+				sortByCountBtn.classList.remove('active');
+				applyFiltersAndRender();
+			});
 
-		sortByCountBtn.addEventListener('click', () => {
-			currentSort = 'count';
-			sortByCountBtn.classList.add('active');
-			sortByNameBtn.classList.remove('active');
-			applyFiltersAndRender();
-		});
+			sortByCountBtn.addEventListener('click', () => {
+				currentSort = 'count';
+				sortByCountBtn.classList.add('active');
+				sortByNameBtn.classList.remove('active');
+				applyFiltersAndRender();
+			});
+			
+			// A single delegated event listener for all actions on the tag list.
+			tagListElem.addEventListener('click', (e) => {
+				const target = e.target;
+				const tagId = target.dataset.tagId;
+
+				if (!tagId) return;
+
+				if (target.matches('.edit-btn') || target.matches('.cancel-btn')) {
+					e.preventDefault();
+					toggleEditForm(tagId);
+				} else if (target.matches('.rename-btn')) {
+					handleRename(tagId);
+				} else if (target.matches('.merge-btn')) {
+					handleMerge(tagId, target.dataset.tagName);
+				} else if (target.matches('.force-delete-btn')) {
+					handleForceDelete(tagId, target.dataset.tagName);
+				}
+			});
+		}
 		
-		tagListElem.addEventListener('click', (e) => {
-			const target = e.target;
-			const tagId = target.dataset.tagId;
-
-			if (!tagId) return;
-
-			if (target.matches('.edit-btn') || target.matches('.cancel-btn')) {
-				e.preventDefault();
-				toggleEditForm(tagId);
-			} else if (target.matches('.rename-btn')) {
-				handleRename(tagId);
-			} else if (target.matches('.merge-btn')) {
-				handleMerge(tagId, target.dataset.tagName);
-			} else if (target.matches('.force-delete-btn')) {
-				handleForceDelete(tagId, target.dataset.tagName);
-			}
-		});
-
-		// --- Initial Load ---
-		initialize();
+		// --- 6. START THE APPLICATION ---
+		initializeEventListeners();
+		fetchAndInitialize();
 	});
 	</script>
 </body>
