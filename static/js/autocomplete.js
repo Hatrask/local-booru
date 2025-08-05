@@ -1,40 +1,34 @@
 /**
- * local-booru - autocomplete.js
- * 
- * This script provides a reusable and intelligent autocomplete component for tag input fields.
- * It is designed to handle complex search queries containing operators and provides a
- * responsive UI with keyboard and mouse navigation.
+ * Sets up an intelligent, reusable autocomplete component for tag input fields.
+ * It is designed to handle complex search queries with operators and provides a
+ * responsive UI with full keyboard and mouse navigation.
+ *
+ * @param {HTMLInputElement|HTMLTextAreaElement} inputElement The input or textarea to attach to.
+ * @param {HTMLDivElement} suggestionsContainer The div element where suggestions will be displayed.
+ * @param {Function} [onSelect] An optional callback that runs when a suggestion is selected.
+ *                              It receives the selected tag name as its argument. If not provided,
+ *                              a default behavior for search queries is used.
  */
-
-/**
- * Initializes the autocomplete functionality on a given input field.
- * @param {HTMLInputElement|HTMLTextAreaElement} inputElement The input field to attach to.
- * @param {HTMLDivElement} suggestionsContainer The div element to display suggestions in.
- */
-function setupTagAutocomplete(inputElement, suggestionsContainer) {
+function setupTagAutocomplete(inputElement, suggestionsContainer, onSelect) {
     
     // --- State Management ---
     let debounceTimeout;
-    let selectedIndex = -1; // -1 means no selection
+    let selectedIndex = -1; // -1 means no item is highlighted.
 
     // --- Core Logic ---
 
     /**
      * Analyzes the input's value to determine the current tag being typed.
-     * This is the "brains" of the component, allowing it to work within complex queries.
+     * This allows the autocomplete to work within complex, multi-part queries.
      * @param {string} fullQuery - The entire string from the input field.
-     * @returns {{prefix: string, term: string}} An object containing the part of the query
-     * before the current tag (prefix) and the current tag itself (term).
+     * @returns {{prefix: string, term: string}} An object with the query part before the
+     *          current term (prefix) and the current term itself.
      */
     function getAutocompleteContext(fullQuery) {
-        // This regex splits the string by any of the supported separators.
-        // The separators are: comma, ' AND ', ' OR ', pipe, '(', or '-'
+        // This regex finds the last "word" in a query, treating various operators as word breaks.
         const parts = fullQuery.split(/,|\sAND\s|\sOR\s|\||\(|-/i);
-        
-        // The term we need to autocomplete is the last part of the split string.
         const currentTerm = parts[parts.length - 1].trimStart();
         
-        // The prefix is everything in the original query before the current term.
         const prefixLength = fullQuery.length - currentTerm.length;
         const prefix = fullQuery.substring(0, prefixLength);
         
@@ -42,7 +36,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
     }
 
     /**
-     * Fetches tag suggestions from the backend API.
+     * Fetches tag suggestions from the backend API based on the current term.
      */
     async function fetchSuggestions() {
         const { term } = getAutocompleteContext(inputElement.value);
@@ -58,8 +52,8 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
             
             const tags = await response.json();
 
-            // Crucial check to prevent race conditions:
-            // Only render suggestions if the input hasn't changed since we started the fetch.
+            // Crucial check to prevent a race condition: Only render suggestions if the
+            // input value hasn't changed since this fetch was initiated.
             const newContext = getAutocompleteContext(inputElement.value);
             if (newContext.term === term) {
                 renderSuggestions(tags);
@@ -67,14 +61,14 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
         } catch (error) {
             console.error('Error fetching autocomplete suggestions:', error);
             suggestionsContainer.innerHTML = '<div>Error fetching tags.</div>';
-            showSuggestions(); // Show the error message
+            showSuggestions();
         }
     }
 
     // --- DOM & UI ---
 
     /**
-     * Renders the list of suggestions in the container.
+     * Renders the list of suggestion strings into the suggestions container.
      * @param {string[]} tags - An array of tag strings.
      */
     function renderSuggestions(tags) {
@@ -83,11 +77,10 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
             return;
         }
 
-        suggestionsContainer.innerHTML = ''; // Clear previous suggestions
+        suggestionsContainer.innerHTML = '';
         tags.forEach(tag => {
             const div = document.createElement('div');
             div.textContent = tag;
-            // Use data-* attribute for easy access in the event handler
             div.dataset.tag = tag; 
             suggestionsContainer.appendChild(div);
         });
@@ -95,12 +88,18 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
     }
 
     /**
-     * Selects a suggestion and updates the input field's value.
+     * Executes the selection logic, either running the custom callback or default behavior.
      * @param {string} selectedTag - The tag string that was selected.
      */
     function selectSuggestion(selectedTag) {
-        const { prefix } = getAutocompleteContext(inputElement.value);
-        inputElement.value = `${prefix}${selectedTag} `; // Add a space for the next tag
+        if (typeof onSelect === 'function') {
+            onSelect(selectedTag);
+        } else {
+            // Default behavior for standard search inputs.
+            const { prefix } = getAutocompleteContext(inputElement.value);
+            inputElement.value = `${prefix}${selectedTag} `; 
+        }
+        
         inputElement.focus();
         hideSuggestions();
     }
@@ -113,7 +112,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
         items.forEach((item, i) => {
             item.classList.toggle('highlight', i === selectedIndex);
         });
-        // Ensure the highlighted item is visible if the list scrolls
+
         if (selectedIndex > -1 && items[selectedIndex]) {
             items[selectedIndex].scrollIntoView({ block: 'nearest' });
         }
@@ -139,7 +138,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
     }
 
     /**
-     * Handles keyboard navigation (ArrowUp, ArrowDown, Enter, Escape).
+     * Handles keyboard navigation (Up, Down, Enter, Tab, Escape).
      */
     function handleKeydown(e) {
         if (suggestionsContainer.style.display === 'none') return;
@@ -176,9 +175,8 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
      * Handles clicks on a suggestion using event delegation.
      */
     function handleSuggestionClick(e) {
-        // Check if a suggestion div was clicked
         if (e.target.dataset.tag) {
-            e.preventDefault(); // Prevents the input from losing focus
+            e.preventDefault();
             selectSuggestion(e.target.dataset.tag);
         }
     }
@@ -188,7 +186,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer) {
     inputElement.addEventListener('input', handleInput);
     inputElement.addEventListener('keydown', handleKeydown);
 
-    // Use 'mousedown' instead of 'click' to prevent the input's 'blur' event
+    // Use 'mousedown' instead of 'click'. This prevents the input's 'blur' event
     // from hiding the suggestions before the click can be registered.
     suggestionsContainer.addEventListener('mousedown', handleSuggestionClick);
 
