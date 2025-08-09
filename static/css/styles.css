@@ -380,7 +380,6 @@ form.search-form button:hover {
 #pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
 
 .lightbox-actions {
-    margin-top: 1rem;
     display: flex;
     justify-content: center;
     gap: 1rem;
