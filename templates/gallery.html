@@ -50,6 +50,7 @@
         </div>
     </div>
 
+<script src="/static/js/notifications.js"></script>
 <script src="/static/js/autocomplete.js"></script>
 
 <script>
@@ -200,7 +201,50 @@ document.addEventListener('DOMContentLoaded', () => {
         const image = currentImages[index];
         lightboxImage.src = `/media/images/${image.filename}`;
         lightboxImage.alt = `Image ID: ${image.id}`;
-        lightboxInfo.innerHTML = `<h4>Image ID: ${image.id}</h4><p>Tags: ${image.tags.join(', ') || 'No tags'}</p><a href="/image/${image.id}" class="action-button">Edit Tags</a>`;
+
+        const editButton = `<a href="/image/${image.id}" class="action-button">Edit Tags</a>`;
+        const deleteButton = `<button id="delete-btn" class="action-button danger" data-image-id="${image.id}">Delete</button>`;
+
+        lightboxInfo.innerHTML = `
+            <h4>Image ID: ${image.id}</h4>
+            <p>Tags: ${image.tags.join(', ') || 'No tags'}</p>
+            <div class="lightbox-actions">
+                ${editButton}
+                ${deleteButton}
+            </div>
+        `;
+
+        // Add event listener to the new delete button
+        document.getElementById('delete-btn').addEventListener('click', handleDelete);
+    }
+
+    /**
+     * Handles the deletion of a single image from the lightbox view.
+     */
+    async function handleDelete(event) {
+        const imageId = event.target.dataset.imageId;
+        if (!imageId) return;
+
+        const confirmed = await showConfirmation('Are you sure you want to permanently delete this image? This cannot be undone.');
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`/api/image/${imageId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                showToast('Image deleted successfully.', 'success');
+                closeLightbox();
+                loadPage(currentPage); // Reload the gallery
+            } else {
+                const result = await response.json();
+                showToast(result.detail || 'Failed to delete image.', 'error');
+            }
+        } catch (error) {
+            console.error('Error deleting image:', error);
+            showToast('An unexpected error occurred.', 'error');
+        }
     }
     
     /**
