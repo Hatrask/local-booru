@@ -74,7 +74,7 @@ Follow these steps to get `local-booru` running on your local machine.
 1.  **Upload:** Go to the "Upload" page to add your first images.
 2.  **Browse:** Navigate to the "Gallery" to see your collection.
 3.  **Search:** Use the search bar at the top of the gallery to filter your images. Click an empty search bar to see your saved and recent queries. Click the "Help" link for a full guide on the search syntax.
-4.  **Edit:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page where you can update its tags.
+4.  **Edit or Delete:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page where you can update its tags, or "Delete" to remove it permanently from your collection.
 5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
 6.  **Manage Searches:** Visit the "Saved Searches" page to organize your pinned and recent search queries.
 
