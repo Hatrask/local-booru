@@ -312,9 +312,16 @@ form.search-form-index button:hover {
 
 #upload-status {margin: 0.5rem 0;}
 
-#preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem; }
+#preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1rem;
+    justify-content: center;
+}
 .preview-thumb {
-    width: 100px; height: 100px;
+    width: 100px;
+    height: 100px;
     object-fit: cover;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
