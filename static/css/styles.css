@@ -256,8 +256,36 @@ form.search-form-index button:hover {
 
 /* --- 3.2 Upload Page --- */
 .upload-form-container { max-width: 600px; margin: auto; }
-.upload-form label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
-.upload-form input[type="file"] { margin-bottom: 1rem; }
+
+#drop-zone {
+    border: 3px dashed var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 3rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.3s, background-color 0.3s;
+    margin-bottom: 1rem;
+    background-color: var(--color-bg-secondary);
+}
+
+#drop-zone.drag-over {
+    border-color: var(--color-accent);
+    background-color: var(--color-bg-tertiary);
+}
+
+#drop-zone p {
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+#drop-zone svg {
+    color: var(--color-text-secondary);
+    margin-bottom: 1rem;
+}
+
+#drop-zone input[type='file'] {
+    display: none;
+}
 
 .upload-form input[type="text"] {
     width: 100%;
