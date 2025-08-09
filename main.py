@@ -260,6 +260,22 @@ def api_batch_delete_images(image_ids: List[int] = Form(...), db: Session = Depe
     return {"message": f"Successfully deleted {deleted_count} image(s)."}
 
 
+@app.delete("/api/image/{image_id}")
+def api_delete_image(image_id: int, db: Session = Depends(get_db)):
+    """Deletes a single image by its ID."""
+    image = db.query(Image).filter(Image.id == image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found.")
+
+    image_path = f"media/images/{image.filename}"
+    if os.path.exists(image_path):
+        os.remove(image_path)
+
+    db.delete(image)
+    db.commit()
+    return {"message": f"Successfully deleted image {image_id}."}
+
+
 @app.post("/batch_retag")
 def batch_retag(
     image_ids: List[int] = Form(...),
