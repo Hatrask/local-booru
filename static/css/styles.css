@@ -288,13 +288,22 @@ form.search-form button {
 }
 form.search-form button:hover { background-color: var(--color-accent-hover); }
 
-.gallery { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+.gallery {
+    column-width: var(--thumb-width);
+    column-count: auto;
+    column-gap: 1rem;
+}
 .thumb {
-    width: var(--thumb-width);
+    width: 100%;
+    margin-bottom: 1rem;
+    break-inside: avoid;
+    display: inline-block;
     box-sizing: border-box;
     text-align: center;
     position: relative;
     border-radius: var(--border-radius);
+    /* Corrected: This is a standard fix for rendering/event bugs in column layouts */
+    transform: translateZ(0);
 }
 .thumb img {
     max-width: 100%;
@@ -304,7 +313,6 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     border-radius: var(--border-radius);
 }
 
-/* Reverted: Styles for the dynamic hover tooltip */
 #tag-tooltip {
     position: fixed;
     background-color: rgba(18, 18, 18, 0.95);
@@ -388,9 +396,32 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 
 /* --- 3.5 Batch Actions Page --- */
 #selection-controls, .page-actions { text-align: center; margin: 1rem 0; }
-.batch-gallery .thumb { border: 2px solid var(--color-border); user-select: none; cursor: pointer; overflow: visible; }
+.batch-gallery {
+    /* New: Apply masonry layout to batch actions page as well */
+    column-width: var(--thumb-width);
+    column-count: auto;
+    column-gap: 1rem;
+}
+.batch-gallery .thumb {
+    /* New: Styling for items within the masonry layout */
+    width: 100%;
+    margin-bottom: 1rem;
+    break-inside: avoid;
+    display: inline-block;
+
+    /* Keep existing styles */
+    border: 2px solid var(--color-border);
+    user-select: none;
+    cursor: pointer;
+    overflow: visible;
+    transform: translateZ(0); /* New: Fix for column layout event bugs */
+}
 .batch-gallery .thumb.selected { border-color: var(--color-accent); }
 .batch-gallery .thumb img { pointer-events: none; }
+/* New: Center the tag pills in batch mode */
+.batch-gallery .tag-pills-container {
+    justify-content: center;
+}
 #selection-controls button {
     padding: 0.5rem 1rem; margin: 0 0.2rem; cursor: pointer;
     border: 1px solid var(--color-border); background-color: var(--color-bg-tertiary);
