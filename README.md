@@ -8,7 +8,7 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
 ## Features
 
 *   **Duplicate-Aware Uploads:** Upload multiple images at once. The system calculates a SHA256 hash for each file and automatically ignores any duplicates, ensuring a clean media library.
-*   **Flexible Tagging:** The core of the application is built on a many-to-many relationship between images and tags. Tags can be managed individually or through powerful batch actions.
+*   **Categorized Tagging:** Go beyond simple tags with a structured category system (`general`, `artist`, `character`, `copyright`, `metadata`). Tags are color-coded for instant recognition, and you can search with prefixes (e.g., `artist:name`) for more precise filtering.
 *   **Comprehensive Search:** A search bar with a dedicated query syntax supports finding images by a combination of tags. Includes support for:
     *   `AND` logic (`tag1, tag2`)
     *   `OR` logic (`(tag1 | tag2)`)
@@ -16,13 +16,10 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
     *   `Wildcard` matching (`art*`)
     *   A special `untagged` keyword.
 *   **Saved Searches:** Automatically remembers your recent search queries for quick recall. "Pin" your most-used or complex searches for permanent, prioritized access. A dedicated management page allows you to view, pin, and delete all saved queries.
-*   **Gallery & Viewer:** A paginated thumbnail grid for browsing the collection. Thumbnail sizes are configurable (S/M/L) and saved in the browser. Includes a full-screen lightbox viewer with keyboard navigation for cycling through images.
+*   **Gallery & Viewer:** A paginated, masonry-style thumbnail grid for browsing the collection. Includes a full-screen lightbox viewer and an on-demand tag tooltip system (toggle with `T`).
 *   **Batch Actions:** A dedicated page for modifying large sets of images at once. Selections are persistent across pages, allowing you to add, remove, or replace tags, or to permanently delete images in bulk.
 *   **Persistent Undo:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after restarting the application.
-*   **Tag Management:** A dedicated page for database-level tag maintenance, essential for keeping a tag library clean and organized.
-    *   Filter tags by name and view unused (orphan) tags.
-    *   Sort tags alphabetically or by image count.
-    *   Rename, merge, and force-delete tags.
+*   **Tag Management:** A dedicated page for database-level tag maintenance. Rename, merge, delete, or change the category of any tag.
 
 ## Getting Started
 
@@ -71,11 +68,11 @@ Follow these steps to get `local-booru` running on your local machine.
 
 ## How to Use
 
-1.  **Upload:** Go to the "Upload" page to add your first images.
-2.  **Browse:** Navigate to the "Gallery" to see your collection.
-3.  **Search:** Use the search bar at the top of the gallery to filter your images. Click an empty search bar to see your saved and recent queries. Click the "Help" link for a full guide on the search syntax.
-4.  **Edit or Delete:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page where you can update its tags, or "Delete" to remove it permanently from your collection.
-5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
+1.  **Upload:** Go to the "Upload" page to add your first images. You can add categorized tags directly on upload (e.g., `artist:someartist, character:somechar, tag1`).
+2.  **Browse:** Navigate to the "Gallery" to see your collection. Press `T` to toggle the tag tooltips on and off.
+3.  **Search:** Use the search bar to filter images. You can now search by category (e.g., `character:reimu_hakurei`).
+4.  **Edit or Delete:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page, or "Delete" to remove it.
+5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization, including changing tag categories.
 6.  **Manage Searches:** Visit the "Saved Searches" page to organize your pinned and recent search queries.
 
 ## Maintenance
