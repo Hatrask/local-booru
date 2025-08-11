@@ -61,8 +61,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. CONFIGURATION & CONSTANTS ---
     const IMAGES_PER_PAGE = 20;
     const DEFAULT_THUMB_SIZE = '250';
-    const TOOLTIP_SHOW_DELAY = 250;
+    const TOOLTIP_SHOW_DELAY = 100;
     const TOOLTIP_HIDE_DELAY = 50;
+    const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled'; // New: localStorage key
 
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
@@ -92,6 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let hasMorePages = true;
     let isLoading = false;        // Flag to prevent multiple simultaneous API calls
     let showTooltipTimer, hideTooltipTimer; // Timers for managing tooltip state
+    // New: Read initial state from localStorage, defaulting to false.
+    let isTooltipModeEnabled = localStorage.getItem(TOOLTIP_MODE_KEY) === 'true';
 
     // --- 4. CORE FUNCTIONS ---
 
@@ -362,16 +365,28 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
+        // Ignore key presses if the user is typing in an input field.
         if (e.target.matches('input, textarea')) return;
+
         if (lightboxModal.style.display === 'flex') {
             if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') navigateLightbox(1);
             else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') navigateLightbox(-1);
             else if (e.key === 'Escape') closeLightbox();
         } else {
+            // Gallery page navigation
             if ((e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') && hasMorePages) {
                 loadPage(currentPage + 1);
             } else if ((e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') && currentPage > 1) {
                 loadPage(currentPage - 1);
+            } else if (e.key.toLowerCase() === 't') {
+                isTooltipModeEnabled = !isTooltipModeEnabled;
+                // New: Save the new state to localStorage
+                localStorage.setItem(TOOLTIP_MODE_KEY, isTooltipModeEnabled);
+                const message = `Tooltip mode ${isTooltipModeEnabled ? 'enabled' : 'disabled'}.`;
+                showToast(message, 'info');
+                if (!isTooltipModeEnabled) {
+                    hideTooltip();
+                }
             }
         }
     }
@@ -396,27 +411,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (newPage !== currentPage) loadPage(newPage);
         });
 
-        // Corrected: Event delegation for smoother tooltip logic
+        // Event delegation for dynamic tooltip, now conditional on tooltip mode
         galleryGrid.addEventListener('mouseover', e => {
+            if (!isTooltipModeEnabled) return;
+            
             const thumb = e.target.closest('.thumb');
             if (thumb) {
                 clearTimeout(hideTooltipTimer);
-                clearTimeout(showTooltipTimer); // Clear any previous show timer
-                // Start a new timer to show the tooltip for the current thumb
                 showTooltipTimer = setTimeout(() => showTooltip(thumb, e), TOOLTIP_SHOW_DELAY);
             }
         });
 
         galleryGrid.addEventListener('mouseout', e => {
+            if (!isTooltipModeEnabled) return;
+            
             const thumb = e.target.closest('.thumb');
             if (thumb) {
-                clearTimeout(showTooltipTimer); // Cancel pending show if mouse leaves quickly
+                clearTimeout(showTooltipTimer);
                 hideTooltipTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY);
             }
         });
         
-        tagTooltip.addEventListener('mouseover', () => clearTimeout(hideTooltipTimer));
+        tagTooltip.addEventListener('mouseover', () => {
+            if (!isTooltipModeEnabled) return;
+            clearTimeout(hideTooltipTimer);
+        });
+
         tagTooltip.addEventListener('mouseout', () => {
+            if (!isTooltipModeEnabled) return;
             hideTooltipTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY);
         });
 

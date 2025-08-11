@@ -290,17 +290,23 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 
 .gallery { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
 .thumb {
-    width: var(--thumb-width); box-sizing: border-box;
-    text-align: center; position: relative; border-radius: var(--border-radius);
+    width: var(--thumb-width);
+    box-sizing: border-box;
+    text-align: center;
+    position: relative;
+    border-radius: var(--border-radius);
 }
 .thumb img {
-    max-width: 100%; height: auto; cursor: pointer;
-    display: block; border-radius: var(--border-radius);
+    max-width: 100%;
+    height: auto;
+    cursor: pointer;
+    display: block;
+    border-radius: var(--border-radius);
 }
 
-/* New: Styles for the hover tooltip */
-.thumb-tooltip {
-    position: fixed; /* Position relative to the viewport for accurate placement */
+/* Reverted: Styles for the dynamic hover tooltip */
+#tag-tooltip {
+    position: fixed;
     background-color: rgba(18, 18, 18, 0.95);
     padding: 0.5rem;
     border-radius: var(--border-radius);
@@ -310,15 +316,16 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     max-width: 300px;
     text-align: left;
     
-    /* Animation and visibility */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-    pointer-events: auto; /* Allow interaction with the tooltip and its content */
+    pointer-events: auto;
 }
-.thumb-tooltip.visible { opacity: 1; visibility: visible; }
-/* New: Special class for dimension calculation without visual flicker */
-.thumb-tooltip.visible-calculating {
+#tag-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+}
+#tag-tooltip.visible-calculating {
     visibility: hidden !important;
     display: block !important;
     opacity: 0 !important;
