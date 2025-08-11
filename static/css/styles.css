@@ -260,9 +260,8 @@ form.search-form-index button:hover {
 #drop-zone {
     border: 3px dashed var(--color-border);
     border-radius: var(--border-radius);
-    padding: 3rem;
+    padding: 2rem;
     text-align: center;
-    cursor: pointer;
     transition: border-color 0.3s, background-color 0.3s;
     margin-bottom: 1rem;
     background-color: var(--color-bg-secondary);
@@ -283,9 +282,20 @@ form.search-form-index button:hover {
     margin-bottom: 1rem;
 }
 
-#drop-zone input[type='file'] {
-    display: none;
+.drop-zone-actions {
+    margin-top: 1rem;
+    color: var(--color-text-secondary);
 }
+.drop-zone-actions a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: bold;
+}
+.drop-zone-actions span {
+    margin: 0 0.5rem;
+}
+
 
 .upload-form input[type="text"] {
     width: 100%;
@@ -310,21 +320,72 @@ form.search-form-index button:hover {
     width: 100%;
 }
 
+.upload-form #upload-button:disabled {
+    background-color: var(--color-neutral);
+    cursor: not-allowed;
+}
+
 #upload-status {margin: 0.5rem 0;}
+
+#queue-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--border-radius);
+}
+#queue-controls #clear-queue-btn {
+    background-color: var(--color-neutral);
+    font-size: 0.7rem;
+    padding: 0.4rem 0.8rem;
+}
 
 #preview-container {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
     margin-bottom: 1rem;
-    justify-content: center;
+    justify-content: flex-start;
+    background-color: var(--color-bg-secondary);
+    border-radius: var(--border-radius);
+    padding: 10px;
+    min-height: 50px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+.preview-thumb-wrapper {
+    position: relative;
 }
 .preview-thumb {
-    width: 100px;
-    height: 100px;
+    width: 105px;
+    height: 105px;
     object-fit: cover;
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
+    display: block;
+}
+.preview-remove-btn {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background-color: var(--color-danger);
+    color: white;
+    border: 1px solid var(--color-bg-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+.preview-remove-btn:hover {
+    opacity: 1;
 }
 
 

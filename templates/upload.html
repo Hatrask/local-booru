@@ -9,14 +9,28 @@
     <div class="upload-form-container">
         <h1>Upload Images</h1>
         <form id="uploadForm" class="upload-form" action="/upload" method="post" enctype="multipart/form-data" autocomplete="off">
+            <!-- Hidden inputs to handle file and folder selection separately -->
+            <input type="file" id="file-input" multiple style="display: none;" />
+            <input type="file" id="folder-input" webkitdirectory directory style="display: none;" />
+
             <div id="drop-zone">
-                <input type="file" name="files" id="file" multiple required />
                 <p>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
                         <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" />
                     </svg>
                 </p>
-                <p>Drag & drop files here, or click to select files</p>
+                <p>Drag & drop files or folders here</p>
+                <div class="drop-zone-actions">
+                    <span>Or</span>
+                    <a href="#" id="select-files-link">select files</a>
+                    <span>/</span>
+                    <a href="#" id="select-folder-link">select a folder</a>
+                </div>
+            </div>
+
+            <div id="queue-controls" style="display: none;">
+                <span><strong id="file-count">0</strong> / 500 files selected</span>
+                <button type="button" id="clear-queue-btn" class="action-button">Clear Queue</button>
             </div>
 
             <div id="preview-container"></div>
@@ -41,138 +55,247 @@
     </div>
 
     <script src="/static/js/autocomplete.js"></script>
+    <script src="/static/js/notifications.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
 
-            // --- 1. DOM ELEMENT REFERENCES ---
+            // DOM element references
             const uploadForm = document.getElementById('uploadForm');
-            const fileInput = document.getElementById('file');
+            const fileInput = document.getElementById('file-input');
+            const folderInput = document.getElementById('folder-input');
+            const selectFilesLink = document.getElementById('select-files-link');
+            const selectFolderLink = document.getElementById('select-folder-link');
             const dropZone = document.getElementById('drop-zone');
             const previewContainer = document.getElementById('preview-container');
             const tagInput = document.getElementById('tagInput');
             const suggestionsBox = document.querySelector('.suggestions');
             const uploadStatusDiv = document.getElementById('upload-status');
             const uploadButton = document.getElementById('upload-button');
+            const queueControls = document.getElementById('queue-controls');
+            const fileCountSpan = document.getElementById('file-count');
+            const clearQueueBtn = document.getElementById('clear-queue-btn');
 
-            // --- 2. CORE FUNCTIONS ---
+            // Configuration and State
+            const MAX_FILES = 500;
+            let queuedFiles = [];
+            // State flags prevent concurrent operations (e.g., adding files while an upload is in progress)
+            let isProcessingFiles = false;
+            let isUploading = false;
 
             /**
-             * Handles the file input's 'change' event to display image previews.
+             * The single source of truth for all UI state changes. This function reads the current
+             * state flags and queue length to ensure the UI is always consistent.
              */
-            function handleFileSelection() {
-                previewContainer.innerHTML = '';
-                const files = fileInput.files;
-                if (!files) return;
+            function updateUIVisuals() {
+                const hasFiles = queuedFiles.length > 0;
+                fileCountSpan.textContent = queuedFiles.length;
+                queueControls.style.display = hasFiles || isProcessingFiles ? 'flex' : 'none';
 
-                for (const file of files) {
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            const img = document.createElement('img');
-                            img.src = e.target.result;
-                            img.className = 'preview-thumb';
-                            previewContainer.appendChild(img);
-                        };
-                        reader.readAsDataURL(file);
-                    }
+                if (isProcessingFiles) {
+                    uploadButton.disabled = true;
+                    uploadButton.textContent = 'Processing...';
+                } else if (isUploading) {
+                    uploadButton.disabled = true;
+                    uploadButton.textContent = 'Uploading...';
+                } else {
+                    uploadButton.disabled = !hasFiles;
+                    uploadButton.textContent = 'Upload';
                 }
             }
 
             /**
-             * Handles the form submission, uploads files, and provides user feedback.
-             * @param {SubmitEvent} event - The form submission event.
+             * Asynchronously processes files from user input or drag-and-drop. It handles
+             * individual files, multiple files, and recursively traverses directories.
+             * @param {FileList | DataTransferItemList} items The list of items to process.
+             */
+            async function processItems(items) {
+                if (isProcessingFiles || isUploading) return;
+                isProcessingFiles = true;
+                updateUIVisuals();
+                let fileLimitBreached = false;
+
+                try {
+                    // Adds a single valid image file to the queue if the limit has not been reached.
+                    const addFileToQueue = (file) => {
+                        if (queuedFiles.length >= MAX_FILES) {
+                            fileLimitBreached = true;
+                            return false; // Signal to stop processing
+                        }
+                        // Add if it's an image and not already a duplicate in the queue
+                        if (file.type.startsWith('image/') && !queuedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                            queuedFiles.push(file);
+                            createAndAppendPreview(file);
+                        }
+                        return true; // Signal to continue
+                    };
+
+                    // Recursively reads entries from a directory, handling the paginated nature of the API.
+                    const traverseDirectory = async (entry) => {
+                        if (fileLimitBreached) return;
+                        const reader = entry.createReader();
+                        let entries;
+                        do {
+                            entries = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+                            for (const innerEntry of entries) {
+                                if (queuedFiles.length >= MAX_FILES) {
+                                    fileLimitBreached = true;
+                                    break;
+                                }
+                                if (innerEntry.isDirectory) {
+                                    await traverseDirectory(innerEntry);
+                                } else if (innerEntry.isFile) {
+                                    try {
+                                        const file = await new Promise((res, rej) => innerEntry.file(res, rej));
+                                        addFileToQueue(file);
+                                    } catch (err) { console.warn("Could not read file:", innerEntry.name, err); }
+                                }
+                            }
+                        } while (entries.length > 0 && !fileLimitBreached);
+                    };
+
+                    // Loop through all items provided by the input or drop event.
+                    for (const item of (items instanceof DataTransferItemList ? Array.from(items) : Array.from(items))) {
+                        if (fileLimitBreached) break;
+                        const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
+                        
+                        if (entry?.isDirectory) {
+                            await traverseDirectory(entry);
+                        } else if (entry?.isFile) {
+                            const file = await new Promise((res, rej) => entry.file(res, rej));
+                            addFileToQueue(file);
+                        } else if (item instanceof File) {
+                            addFileToQueue(item);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error processing files:", error);
+                    showToast("An error occurred while processing items.", "error");
+                } finally {
+                    // This block is crucial. It guarantees the processing state is reset
+                    // and the UI is updated, even if errors occurred.
+                    isProcessingFiles = false;
+                    if (fileLimitBreached) {
+                        showToast(`File limit of ${MAX_FILES} reached. Some files were not added.`, 'info');
+                    }
+                    updateUIVisuals();
+                }
+            }
+
+            /**
+             * Handles the form submission by building FormData from the queue and POSTing it.
+             * @param {SubmitEvent} event The form's submit event.
              */
             async function handleFormSubmit(event) {
                 event.preventDefault();
-                
-                // Provide immediate feedback that the upload has started.
-                uploadStatusDiv.textContent = 'Uploading...';
+                if (isUploading || isProcessingFiles || queuedFiles.length === 0) {
+                    if (queuedFiles.length === 0) showToast('Please select some files to upload.', 'info');
+                    return;
+                }
+                isUploading = true;
+                uploadStatusDiv.textContent = `Uploading ${queuedFiles.length} file(s)...`;
                 uploadStatusDiv.style.color = 'var(--color-text-primary)';
-                uploadButton.disabled = true;
-                uploadButton.textContent = 'Uploading...';
+                updateUIVisuals();
+
+                const formData = new FormData();
+                formData.append('tags', tagInput.value);
+                queuedFiles.forEach(file => formData.append('files', file));
 
                 try {
-                    const formData = new FormData(uploadForm);
-                    const response = await fetch('/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-
+                    const response = await fetch('/upload', { method: 'POST', body: formData });
+                    const result = await response.json();
                     if (response.ok) {
-                        const result = await response.json();
                         uploadStatusDiv.textContent = result.message || 'Upload successful.';
                         uploadStatusDiv.style.color = 'var(--color-success)';
-                        
-                        // Reset the form for the next upload.
-                        uploadForm.reset();
-                        previewContainer.innerHTML = '';
-
+                        clearQueue();
                     } else {
-                        // Handle server-side errors (e.g., validation).
-                        let errorText = 'Upload failed: An unknown error occurred.';
-                        try {
-                            const error = await response.json();
-                            errorText = `Upload failed: ${error.detail || error.message}`;
-                        } catch {
-                            errorText = `Upload failed: Server responded with status ${response.status}.`;
-                        }
-                        uploadStatusDiv.textContent = errorText;
+                        uploadStatusDiv.textContent = `Upload failed: ${result.detail || result.message || `Server responded with status ${response.status}.`}`;
                         uploadStatusDiv.style.color = 'var(--color-danger)';
                     }
                 } catch (error) {
-                    // Handle network errors.
                     console.error('Error during upload:', error);
                     uploadStatusDiv.textContent = 'An unexpected network error occurred.';
                     uploadStatusDiv.style.color = 'var(--color-danger)';
                 } finally {
-                    // Always re-enable the upload button.
-                    uploadButton.disabled = false;
-                    uploadButton.textContent = 'Upload';
+                    // Guarantees the upload state is reset, enabling the user to perform another upload.
+                    isUploading = false;
+                    updateUIVisuals();
                 }
             }
-            
-            // --- 3. INITIALIZATION ---
 
             /**
-             * Sets up the page by initializing autocomplete and attaching event listeners.
+             * Generates and appends a preview thumbnail for a given file.
+             * @param {File} file The file to create a preview for.
+             */
+            function createAndAppendPreview(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'preview-thumb-wrapper';
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'preview-remove-btn';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.title = 'Remove ' + file.name;
+                    removeBtn.onclick = () => {
+                        wrapper.remove();
+                        queuedFiles = queuedFiles.filter(f => f !== file);
+                        updateUIVisuals();
+                    };
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'preview-thumb';
+                    wrapper.appendChild(img);
+                    wrapper.appendChild(removeBtn);
+                    previewContainer.appendChild(wrapper);
+                };
+                reader.readAsDataURL(file);
+            }
+
+            /**
+             * Clears the file queue and resets all related UI elements to their initial state.
+             */
+            function clearQueue() {
+                queuedFiles = [];
+                previewContainer.innerHTML = '';
+                uploadForm.reset();
+                // Explicitly clear file input values to allow re-selecting the same items.
+                fileInput.value = '';
+                folderInput.value = '';
+                updateUIVisuals();
+            }
+            
+            /**
+             * Sets up all initial event listeners for the page.
              */
             function initialize() {
-                // Set up autocomplete for the tag input field.
-                // Saved searches are intentionally disabled on this page.
                 setupTagAutocomplete(tagInput, suggestionsBox);
+
+                // Wire up the user-facing links to trigger the hidden file/folder inputs.
+                selectFilesLink.addEventListener('click', (e) => { e.preventDefault(); fileInput.click(); });
+                selectFolderLink.addEventListener('click', (e) => { e.preventDefault(); folderInput.click(); });
                 
-                // Attach the event handlers.
-                fileInput.addEventListener('change', handleFileSelection);
+                // Add change listeners to both hidden inputs.
+                fileInput.addEventListener('change', (e) => { processItems(e.target.files); e.target.value = null; });
+                folderInput.addEventListener('change', (e) => { processItems(e.target.files); e.target.value = null; });
+                
                 uploadForm.addEventListener('submit', handleFormSubmit);
+                clearQueueBtn.addEventListener('click', clearQueue);
 
-                // --- Drag and Drop Event Listeners ---
-                dropZone.addEventListener('click', () => fileInput.click());
-
-                dropZone.addEventListener('dragover', (e) => {
-                    e.preventDefault();
-                    dropZone.classList.add('drag-over');
-                });
-
-                dropZone.addEventListener('dragleave', (e) => {
-                    e.preventDefault();
-                    dropZone.classList.remove('drag-over');
-                });
-
+                // Setup drag and drop listeners on the main drop zone.
+                dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+                dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
                 dropZone.addEventListener('drop', (e) => {
                     e.preventDefault();
                     dropZone.classList.remove('drag-over');
-                    const droppedFiles = e.dataTransfer.files;
-                    if (droppedFiles.length) {
-                        fileInput.files = droppedFiles;
-                        // Trigger the change event to update the preview
-                        const event = new Event('change', { bubbles: true });
-                        fileInput.dispatchEvent(event);
+                    if (e.dataTransfer.items) {
+                        processItems(e.dataTransfer.items);
                     }
                 });
+
+                updateUIVisuals(); // Set the initial state of the buttons.
             }
 
-            // --- 4. START THE APPLICATION ---
             initialize();
         });
     </script>
