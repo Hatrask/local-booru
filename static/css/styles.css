@@ -6,7 +6,7 @@
       - Body & Typography (body, h1, a, code, etc.)
 
    2. Reusable Components
-      - 2.1 Autocomplete
+      - 2.1 Autocomplete & Tag Pills
       - 2.2 Generic Action Button
       - 2.3 Toast Notifications
 
@@ -42,6 +42,13 @@
     --color-info: #2196F3;
     --color-warning: #ff9800;
     --color-neutral: #6c757d;
+
+    /* Tag Category Colors */
+    --tag-color-general: #4a90e2;
+    --tag-color-artist: #28a745;
+    --tag-color-character: #9c27b0;
+    --tag-color-copyright: #ff9800;
+    --tag-color-metadata: #6c757d;
 
     /* Layout */
     --border-radius: 4px;
@@ -80,7 +87,7 @@ code {
    2. Reusable Components
    ========================================================================== */
 
-/* --- 2.1 Autocomplete --- */
+/* --- 2.1 Autocomplete & Tag Pills --- */
 .autocomplete-container {
     position: relative;
     width: 100%;
@@ -105,7 +112,7 @@ code {
 }
 
 .suggestions > div {
-    padding: 0.8rem 1rem;
+    padding: 0.5rem 0.8rem;
     cursor: pointer;
     color: var(--color-text-primary);
     line-height: 1.4;
@@ -136,71 +143,60 @@ code {
 }
 
 .suggestion-controls button {
-    background: none;
-    border: none;
-    color: var(--color-text-secondary);
-    font-size: 1.1em;
-    padding: 0;
-    cursor: pointer;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    appearance: none;
+    background: none; border: none; color: var(--color-text-secondary);
+    font-size: 1.1em; padding: 0; cursor: pointer; opacity: 0.6;
+    transition: opacity 0.2s; appearance: none;
 }
-.suggestion-controls button:hover {
-    opacity: 1;
-    color: var(--color-accent);
-}
+.suggestion-controls button:hover { opacity: 1; color: var(--color-accent); }
 
 .suggestions-header {
-    padding: 0.6rem 1rem;
-    font-size: 0.8em;
-    font-weight: bold;
-    color: var(--color-text-secondary);
-    background-color: var(--color-bg-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--color-border);
-    cursor: default;
+    padding: 0.6rem 1rem; font-size: 0.8em; font-weight: bold;
+    color: var(--color-text-secondary); background-color: var(--color-bg-primary);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--color-border); cursor: default;
 }
-.suggestions-header:hover {
-    background-color: var(--color-bg-primary);
+.suggestions-header:hover { background-color: var(--color-bg-primary); }
+
+.tag-pill {
+    display: inline-block; padding: 0.2em 0.6em; margin: 0.1em;
+    border-radius: var(--border-radius); font-size: 0.85em; font-weight: 500;
+    line-height: 1.4; color: white; text-decoration: none;
+}
+
+a.tag-pill:hover { filter: brightness(1.2); }
+
+.tag-general { background-color: var(--tag-color-general); }
+.tag-artist { background-color: var(--tag-color-artist); }
+.tag-character { background-color: var(--tag-color-character); }
+.tag-copyright { background-color: var(--tag-color-copyright); }
+.tag-metadata { background-color: var(--tag-color-metadata); }
+
+.suggestion-tag-pill {
+    display: inline-block; padding: 0.2em 0.6em;
+    border-radius: var(--border-radius); color: white; font-weight: 500;
 }
 
 
 /* --- 2.2 Generic Action Button --- */
 .action-button {
-    display: inline-block;
-    padding: 0.5rem 1rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-bg-tertiary);
-    text-align: center;
-    text-decoration: none;
-    color: var(--color-text-primary);
+    display: inline-block; padding: 0.5rem 1rem; font-size: 0.8rem;
+    cursor: pointer; border: 1px solid var(--color-border);
+    background-color: var(--color-bg-tertiary); text-align: center;
+    text-decoration: none; color: var(--color-text-primary);
     border-radius: var(--border-radius);
 }
 
 
 /* --- 2.3 Toast Notifications --- */
 #toast-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+    display: flex; flex-direction: column; gap: 10px;
 }
 
 .toast {
-    padding: 15px 20px;
-    border-radius: var(--border-radius);
-    color: white;
-    font-weight: bold;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    opacity: 1;
-    transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
+    padding: 15px 20px; border-radius: var(--border-radius); color: white;
+    font-weight: bold; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    opacity: 1; transition: opacity 0.5s ease-in-out, transform 0.3s ease-in-out;
 }
 .toast-success { background-color: #4CAF50; }
 .toast-error   { background-color: var(--color-danger); }
@@ -214,249 +210,135 @@ code {
 
 /* --- 3.1 Index Page --- */
 .index-page-container { max-width: 600px; margin: auto; }
-
-form.search-form-index {
-    margin: 0.7rem auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
+form.search-form-index { margin: 0.7rem auto; display: flex; justify-content: center; align-items: center; }
 form.search-form-index input[type="text"] {
-    width: 100%;
-    padding: 0.7rem;
-    font-size: 1.1rem;
-    box-sizing: border-box;
-    border: 1px solid var(--color-border);
-    border-right: none;
-    outline: none;
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
+    width: 100%; padding: 0.7rem; font-size: 1.1rem; box-sizing: border-box;
+    border: 1px solid var(--color-border); border-right: none; outline: none;
+    background-color: var(--color-bg-tertiary); color: var(--color-text-primary);
     border-radius: var(--border-radius) 0 0 var(--border-radius);
 }
-
 form.search-form-index button {
-    padding: 0.7rem 1.2rem;
-    font-size: 1.1rem;
-    cursor: pointer;
-    border: 1px solid var(--color-accent);
-    background-color: var(--color-accent);
-    color: white;
-    outline: none;
-    transition: background-color 0.2s;
+    padding: 0.7rem 1.2rem; font-size: 1.1rem; cursor: pointer; border: 1px solid var(--color-accent);
+    background-color: var(--color-accent); color: white; outline: none; transition: background-color 0.2s;
     border-radius: 0 var(--border-radius) var(--border-radius) 0;
 }
-form.search-form-index button:hover {
-    background-color: var(--color-accent-hover);
-}
-
+form.search-form-index button:hover { background-color: var(--color-accent-hover); }
 .image-counter { display: flex; justify-content: center; align-items: center; gap: 0.25rem; margin-top: 2rem; }
 .image-counter img { height: 136px; }
 
 
 /* --- 3.2 Upload Page --- */
 .upload-form-container { max-width: 600px; margin: auto; }
-
 #drop-zone {
-    border: 3px dashed var(--color-border);
-    border-radius: var(--border-radius);
-    padding: 2rem;
-    text-align: center;
-    transition: border-color 0.3s, background-color 0.3s;
-    margin-bottom: 1rem;
-    background-color: var(--color-bg-secondary);
+    border: 3px dashed var(--color-border); border-radius: var(--border-radius);
+    padding: 2rem; text-align: center; transition: border-color 0.3s, background-color 0.3s;
+    margin-bottom: 1rem; background-color: var(--color-bg-secondary);
 }
-
-#drop-zone.drag-over {
-    border-color: var(--color-accent);
-    background-color: var(--color-bg-tertiary);
-}
-
-#drop-zone p {
-    margin: 0;
-    color: var(--color-text-secondary);
-}
-
-#drop-zone svg {
-    color: var(--color-text-secondary);
-    margin-bottom: 1rem;
-}
-
-.drop-zone-actions {
-    margin-top: 1rem;
-    color: var(--color-text-secondary);
-}
-.drop-zone-actions a {
-    color: var(--color-accent);
-    text-decoration: underline;
-    cursor: pointer;
-    font-weight: bold;
-}
-.drop-zone-actions span {
-    margin: 0 0.5rem;
-}
-
-
+#drop-zone.drag-over { border-color: var(--color-accent); background-color: var(--color-bg-tertiary); }
+#drop-zone p { margin: 0; color: var(--color-text-secondary); }
+#drop-zone svg { color: var(--color-text-secondary); margin-bottom: 1rem; }
+.drop-zone-actions { margin-top: 1rem; color: var(--color-text-secondary); }
+.drop-zone-actions a { color: var(--color-accent); text-decoration: underline; cursor: pointer; font-weight: bold; }
+.drop-zone-actions span { margin: 0 0.5rem; }
 .upload-form input[type="text"] {
-    width: 100%;
-    padding: 0.7rem;
-    font-size: 1.1rem;
-    box-sizing: border-box;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    outline: none;
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
+    width: 100%; padding: 0.7rem; font-size: 1.1rem; box-sizing: border-box;
+    border: 1px solid var(--color-border); border-radius: var(--border-radius);
+    outline: none; background-color: var(--color-bg-tertiary); color: var(--color-text-primary);
 }
-
 .upload-form .autocomplete-container { width: 100%; margin-bottom: 1rem; }
 .upload-form .suggestions { border-top: 1px solid var(--color-border); }
-
-.upload-form #upload-button {
-    background-color: var(--color-accent);
-    color: white;
-    border: none;
-    border-radius: var(--border-radius);
-    width: 100%;
-}
-
-.upload-form #upload-button:disabled {
-    background-color: var(--color-neutral);
-    cursor: not-allowed;
-}
-
+.upload-form #upload-button { background-color: var(--color-accent); color: white; border: none; border-radius: var(--border-radius); width: 100%; }
+.upload-form #upload-button:disabled { background-color: var(--color-neutral); cursor: not-allowed; }
 #upload-status {margin: 0.5rem 0;}
-
 #queue-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding: 0.5rem;
-    background-color: var(--color-bg-secondary);
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem; padding: 0.5rem; background-color: var(--color-bg-secondary);
     border-radius: var(--border-radius);
 }
-#queue-controls #clear-queue-btn {
-    background-color: var(--color-neutral);
-    font-size: 0.7rem;
-    padding: 0.4rem 0.8rem;
-}
-
+#queue-controls #clear-queue-btn { background-color: var(--color-neutral); font-size: 0.7rem; padding: 0.4rem 0.8rem; }
 #preview-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 1rem;
-    justify-content: flex-start;
-    background-color: var(--color-bg-secondary);
-    border-radius: var(--border-radius);
-    padding: 10px;
-    min-height: 50px;
-    max-height: 250px;
-    overflow-y: auto;
+    display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;
+    justify-content: flex-start; background-color: var(--color-bg-secondary);
+    border-radius: var(--border-radius); padding: 10px; min-height: 50px;
+    max-height: 250px; overflow-y: auto;
 }
-.preview-thumb-wrapper {
-    position: relative;
-}
-.preview-thumb {
-    width: 105px;
-    height: 105px;
-    object-fit: cover;
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    display: block;
-}
+.preview-thumb-wrapper { position: relative; }
+.preview-thumb { width: 105px; height: 105px; object-fit: cover; border: 1px solid var(--color-border); border-radius: var(--border-radius); display: block; }
 .preview-remove-btn {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 20px;
-    height: 20px;
-    background-color: var(--color-danger);
-    color: white;
-    border: 1px solid var(--color-bg-primary);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.2s;
+    position: absolute; top: -5px; right: -5px; width: 20px; height: 20px;
+    background-color: var(--color-danger); color: white; border: 1px solid var(--color-bg-primary);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: bold; cursor: pointer; opacity: 0.8; transition: opacity 0.2s;
 }
-.preview-remove-btn:hover {
-    opacity: 1;
-}
+.preview-remove-btn:hover { opacity: 1; }
 
 
 /* --- 3.3 Gallery & Lightbox --- */
-form.search-form {
-    margin: 0.7rem auto;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
+form.search-form { margin: 0.7rem auto; display: flex; justify-content: center; align-items: center; }
 form.search-form input[type="text"] {
-    width: 100%;
-    padding: 0.7rem;
-    font-size: 1.1rem;
-    box-sizing: border-box;
-    border: 1px solid var(--color-border);
-    border-right: none;
-    outline: none;
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
+    width: 100%; padding: 0.7rem; font-size: 1.1rem; box-sizing: border-box;
+    border: 1px solid var(--color-border); border-right: none; outline: none;
+    background-color: var(--color-bg-tertiary); color: var(--color-text-primary);
     border-radius: var(--border-radius) 0 0 var(--border-radius);
 }
-
 form.search-form button {
-    padding: 0.7rem 1.2rem;
-    font-size: 1.1rem;
-    cursor: pointer;
-    border: 1px solid var(--color-accent);
-    background-color: var(--color-accent);
-    color: white;
-    outline: none;
-    transition: background-color 0.2s;
+    padding: 0.7rem 1.2rem; font-size: 1.1rem; cursor: pointer; border: 1px solid var(--color-accent);
+    background-color: var(--color-accent); color: white; outline: none; transition: background-color 0.2s;
     border-radius: 0 var(--border-radius) var(--border-radius) 0;
 }
-form.search-form button:hover {
-    background-color: var(--color-accent-hover);
-}
+form.search-form button:hover { background-color: var(--color-accent-hover); }
 
 .gallery { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
-.thumb { width: var(--thumb-width); box-sizing: border-box; text-align: center; position: relative; overflow: hidden; border-radius: var(--border-radius); }
-.thumb img { max-width: 100%; height: auto; cursor: pointer; display: block; }
-
-.tags {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: white; padding: 0.5rem; font-size: 0.75rem;
-    word-wrap: break-word; opacity: 0;
-    transition: opacity 0.2s ease-in-out;
+.thumb {
+    width: var(--thumb-width); box-sizing: border-box;
+    text-align: center; position: relative; border-radius: var(--border-radius);
 }
-.thumb:hover .tags { opacity: 1; }
+.thumb img {
+    max-width: 100%; height: auto; cursor: pointer;
+    display: block; border-radius: var(--border-radius);
+}
 
+/* New: Styles for the hover tooltip */
+.thumb-tooltip {
+    position: fixed; /* Position relative to the viewport for accurate placement */
+    background-color: rgba(18, 18, 18, 0.95);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    width: max-content;
+    max-width: 300px;
+    text-align: left;
+    
+    /* Animation and visibility */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+    pointer-events: auto; /* Allow interaction with the tooltip and its content */
+}
+.thumb-tooltip.visible { opacity: 1; visibility: visible; }
+/* New: Special class for dimension calculation without visual flicker */
+.thumb-tooltip.visible-calculating {
+    visibility: hidden !important;
+    display: block !important;
+    opacity: 0 !important;
+}
+
+.tag-pills-container { display: flex; flex-wrap: wrap; gap: 4px; padding: 0.2rem; }
 .search-actions { text-align: center; margin-bottom: 1rem; }
 .search-actions .action-button:nth-child(2) { margin-left: 1rem; }
-
 #thumbnail-controls { text-align: center; margin-bottom: 1rem; }
 #thumbnail-controls button {
     padding: 0.4rem 1rem; cursor: pointer; border: 1px solid var(--color-border);
     background-color: var(--color-bg-tertiary); color: var(--color-text-primary);
     border-radius: var(--border-radius);
 }
-#thumbnail-controls button.active {
-    background-color: var(--color-accent);
-    color: white; border-color: var(--color-accent);
-}
+#thumbnail-controls button.active { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
 
 #lightbox-modal {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    display: none; justify-content: center; align-items: center; z-index: 100;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.9); display: none;
+    justify-content: center; align-items: center; z-index: 100;
 }
 #lightbox-content { position: relative; max-width: 90%; max-height: 90%; display: flex; flex-direction: column; align-items: center; }
 #lightbox-image { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--border-radius); }
@@ -465,7 +347,8 @@ form.search-form button:hover {
 .lightbox-nav button { background: rgba(0, 0, 0, 0.5); color: #fff; border: none; padding: 15px; cursor: pointer; font-size: 24px; border-radius: 5px; }
 .lightbox-info { color: #fff; text-align: center; background: rgba(0, 0, 0, 0.6); max-width: 80%; padding: 1rem; border-radius: 5px; margin-top: 1rem; }
 .lightbox-info .action-button { background-color: var(--color-accent); border-color: var(--color-accent); margin-top: 1rem; }
-.lightbox-info h4, .lightbox-info p { margin: 0; padding-bottom: 0.5rem; }
+.lightbox-info h4 { margin: 0; padding-bottom: 0.5rem; }
+.lightbox-info .tag-pills-container { justify-content: center; }
 
 #pagination { text-align: center; }
 #pagination button {
@@ -474,23 +357,9 @@ form.search-form button:hover {
     color: var(--color-text-primary); border-radius: var(--border-radius);
 }
 #pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
-
-.lightbox-actions {
-    display: flex;
-    justify-content: center;
-    gap: 1rem;
-}
-
-.action-button.danger {
-    background-color: var(--color-danger);
-    color: white;
-    border-color: var(--color-danger);
-}
-
-.action-button.danger:hover {
-    background-color: #c53030;
-    border-color: #c53030;
-}
+.lightbox-actions { display: flex; justify-content: center; gap: 1rem; }
+.action-button.danger { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
+.action-button.danger:hover { background-color: #c53030; border-color: #c53030; }
 
 
 /* --- 3.4 Image Detail Page --- */
@@ -500,18 +369,9 @@ form.search-form button:hover {
 .detail-page-container .edit-form { width: 100%; max-width: 700px; text-align: center; }
 .detail-page-container .edit-form label { display: block; margin-bottom: 0.5rem; font-size: 1.2rem; font-weight: bold; }
 .detail-page-container .edit-form textarea {
-    width: 100%;
-    min-height: 0;
-    padding: 0.7rem;
-    font-size: 1.1rem;
-    font-family: sans-serif;
-    box-sizing: border-box;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-    margin-bottom: 0.5rem;
-    resize: vertical;
-    border-radius: var(--border-radius);
+    width: 100%; min-height: 0; padding: 0.7rem; font-size: 1.1rem; font-family: sans-serif;
+    box-sizing: border-box; border: 1px solid var(--color-border); background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary); margin-bottom: 0.5rem; resize: vertical; border-radius: var(--border-radius);
 }
 .detail-page-container .form-actions { display: inline-block; padding-bottom: 1.0rem; }
 .detail-page-container .form-actions .action-button { font-size: 0.9rem; padding: 0.8rem 1.5rem; }
@@ -521,22 +381,21 @@ form.search-form button:hover {
 
 /* --- 3.5 Batch Actions Page --- */
 #selection-controls, .page-actions { text-align: center; margin: 1rem 0; }
-.batch-gallery .thumb { border: 2px solid var(--color-border); padding: 0.3rem; user-select: none; cursor: pointer; }
+.batch-gallery .thumb { border: 2px solid var(--color-border); user-select: none; cursor: pointer; overflow: visible; }
 .batch-gallery .thumb.selected { border-color: var(--color-accent); }
 .batch-gallery .thumb img { pointer-events: none; }
-#selection-controls button { padding: 0.5rem 1rem; margin: 0 0.2rem; cursor: pointer; border: 1px solid var(--color-border); background-color: var(--color-bg-tertiary); color: var(--color-text-primary); border-radius: var(--border-radius); }
+#selection-controls button {
+    padding: 0.5rem 1rem; margin: 0 0.2rem; cursor: pointer;
+    border: 1px solid var(--color-border); background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary); border-radius: var(--border-radius);
+}
 #selection-controls button:disabled { cursor: not-allowed; opacity: 0.5; }
 #batch-edit-form { max-width: 600px; margin: 1rem auto; border: 1px solid var(--color-border); padding: 1rem; background: var(--color-bg-secondary); border-radius: var(--border-radius); }
 #batch-edit-form label { display: block; margin: 0.5rem 0; font-weight: bold; }
 #batch-edit-form input[type="text"] {
-    width: 100%;
-    padding: 0.4rem;
-    box-sizing: border-box;
-    margin-bottom: 0.5rem;
-    font-size: 1rem;
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
+    width: 100%; padding: 0.4rem; box-sizing: border-box; margin-bottom: 0.5rem;
+    font-size: 1rem; background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary); border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
 }
 #batch-edit-form button { padding: 0.5rem 1rem; font-size: 1rem; border-radius: var(--border-radius); }
@@ -548,19 +407,19 @@ form.search-form button:hover {
 /* --- 3.6 Tag Manager Page --- */
 .tag-manager-container { max-width: 800px; margin: auto; text-align: left; }
 .tag-manager-container a.back.action-button { margin-bottom: 2rem; display: inline-block; }
-.tag-manager-controls { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between; align-items: center; padding: 1rem; margin-bottom: 1.5rem; background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: var(--border-radius); }
+.tag-manager-controls {
+    display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
+    align-items: center; padding: 1rem; margin-bottom: 1.5rem;
+    background-color: var(--color-bg-secondary); border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+}
 .tag-manager-controls .autocomplete-container { flex-grow: 1; min-width: 250px; }
 .tag-manager-controls .sort-buttons, .tag-manager-controls .filter-options { display: flex; align-items: center; gap: 0.5rem; color: var(--color-text-secondary); }
 .tag-manager-controls .action-button.active { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
 .tag-manager-container input[type="text"] {
-    padding: 0.4rem;
-    font-size: 1rem;
-    box-sizing: border-box;
-    width: 100%;
-    outline: none;
-    background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary);
-    border: 1px solid var(--color-border);
+    padding: 0.4rem; font-size: 1rem; box-sizing: border-box; width: 100%;
+    outline: none; background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary); border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
 }
 .tag-list { list-style-type: none; padding: 0; min-height: 50px; }
@@ -575,12 +434,21 @@ form.search-form button:hover {
 .merge-btn { background-color: var(--color-success); color: white; border-color: var(--color-success); }
 .force-delete-btn { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 .cancel-btn { background-color: var(--color-neutral); color: white; border-color: var(--color-neutral); }
-.tag-manager-container .edit-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; padding: 1rem; background-color: var(--color-bg-tertiary); border-top: 1px solid var(--color-border); border-radius: 0 0 var(--border-radius) var(--border-radius); }
+.tag-manager-container .edit-form {
+    display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
+    padding: 1rem; background-color: var(--color-bg-tertiary);
+    border-top: 1px solid var(--color-border); border-radius: 0 0 var(--border-radius) var(--border-radius);
+}
 .tag-manager-container .edit-form.hidden { display: none; }
 .tag-manager-container .edit-form input[type="text"] { padding: 0.5rem; font-size: 0.9rem; background-color: var(--color-bg-secondary); }
 .tag-manager-container .edit-form .cancel-btn { margin-left: auto; }
 .edit-action-group { display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; }
 .edit-action-group input[type="text"] { flex-grow: 1; }
+.edit-action-group select {
+    padding: 0.5rem; font-size: 0.9rem; background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary); border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+}
 #loading-message { text-align: center; color: var(--color-text-secondary); padding: 2rem; }
 
 
@@ -588,20 +456,11 @@ form.search-form button:hover {
 .saved-searches-container { max-width: 900px; margin: auto; text-align: left; }
 .search-list { list-style: none; padding: 0; margin-top: 1rem; }
 .search-item {
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    margin-bottom: 0.5rem;
-    padding: 0.8rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background-color: var(--color-bg-secondary); border: 1px solid var(--color-border);
+    border-radius: var(--border-radius); margin-bottom: 0.5rem; padding: 0.8rem 1rem;
+    display: flex; justify-content: space-between; align-items: center;
 }
-.search-item-query {
-    flex-grow: 1;
-    margin-right: 1rem;
-    color: var(--color-text-primary);
-}
+.search-item-query { flex-grow: 1; margin-right: 1rem; color: var(--color-text-primary); }
 .search-item-query:hover { text-decoration: underline; }
 .search-item-controls { display: flex; gap: 1rem; }
 .search-item-controls button {
@@ -610,54 +469,20 @@ form.search-form button:hover {
     opacity: 0.7; transition: opacity 0.2s;
 }
 .search-item-controls button:hover { opacity: 1; color: var(--color-accent); }
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 0.5rem;
-}
-.section-header button.clear-btn {
-    font-size: 0.8rem;
-    background-color: var(--color-danger);
-    color: white;
-    border-color: var(--color-danger);
-}
+.section-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; }
+.section-header button.clear-btn { font-size: 0.8rem; background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 
 
 /* --- 3.8 Help Page --- */
 .help-page { max-width: 800px; margin: auto; text-align: left; }
 .help-page li { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; padding: 1rem; border-radius: var(--border-radius); line-height: 1.5; }
-.help-page ul, .help-page ol {
-    list-style-type: none;
-    padding: 0;
-}
+.help-page ul, .help-page ol { list-style-type: none; padding: 0; }
 
 .toc {
-    background-color: var(--color-bg-secondary);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius);
-    padding: 1.5rem;
-    margin: 2rem 0;
+    background-color: var(--color-bg-secondary); border: 1px solid var(--color-border);
+    border-radius: var(--border-radius); padding: 1.5rem; margin: 2rem 0;
 }
-.toc strong {
-    display: block;
-    font-size: 1.2em;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--color-border);
-}
-.toc ul {
-    list-style: none;
-    padding-left: 1rem;
-    margin: 0;
-}
-.toc li {
-    background: none;
-    border: none;
-    padding: 0.4rem 0;
-    margin: 0;
-    line-height: 1.4;
-}
-.toc li a:hover {
-    text-decoration: underline;
-}
+.toc strong { display: block; font-size: 1.2em; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--color-border); }
+.toc ul { list-style: none; padding-left: 1rem; margin: 0; }
+.toc li { background: none; border: none; padding: 0.4rem 0; margin: 0; line-height: 1.4; }
+.toc li a:hover { text-decoration: underline; }

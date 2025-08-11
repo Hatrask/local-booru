@@ -55,7 +55,7 @@
                     type="text"
                     id="batchTagsInput"
                     name="tags"
-                    placeholder="e.g. cat, cute, sunset"
+                    placeholder="e.g. artist:name, character:name, general_tag"
                     autocomplete="off"
                 />
                 <div id="suggestions-batch" class="suggestions"></div>
@@ -130,6 +130,22 @@
         }
 
         /**
+         * New: Generates HTML for color-coded tag pills for display.
+         * @param {Array<Object>} tags - Array of tag objects [{name, category}].
+         * @returns {string} The HTML string for the tag pills.
+         */
+        function renderTagPills(tags) {
+            if (!tags || tags.length === 0) {
+                return '&nbsp;'; // Return non-breaking space to maintain layout
+            }
+            return tags.map(tag => {
+                const categoryClass = getTagCategoryClass(tag.category);
+                // These pills are for display only, not links.
+                return `<span class="tag-pill ${categoryClass}">${tag.name}</span>`;
+            }).join('');
+        }
+
+        /**
          * Renders the grid of image thumbnails into the gallery container.
          * @param {Array<Object>} images - An array of image objects from the API.
          */
@@ -147,7 +163,9 @@
                 if (selectedImageIds.has(img.id)) {
                     thumb.classList.add('selected');
                 }
-                thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy"><div class="tags">${img.tags.join(', ') || 'No tags'}</div>`;
+                // New: Render tags using the pill container
+                const tagsHTML = `<div class="tag-pills-container">${renderTagPills(img.tags)}</div>`;
+                thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy"><div class="tags">${tagsHTML}</div>`;
                 galleryGrid.appendChild(thumb);
             });
         }
@@ -226,7 +244,7 @@
          */
         async function handleBatchRetag(imageIds, action) {
             const tags = batchTagsInput.value.trim();
-            if (!tags) {
+            if (!tags && action !== 'replace') {
                 showToast(`The '${action}' action requires at least one tag.`, 'info');
                 return;
             }
@@ -314,6 +332,7 @@
             });
             
             document.getElementById('clearAllBtn').addEventListener('click', async () => {
+                if (selectedImageIds.size === 0) return;
                 const confirmed = await showConfirmation("Are you sure you want to clear all selections?");
                 if (confirmed) {
                     selectedImageIds.clear();

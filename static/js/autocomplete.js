@@ -11,11 +11,41 @@
  */
 
 // ==========================================================================
-// 1. CONSTANTS
+// 1. CONSTANTS & HELPERS
 // ==========================================================================
 const SAVED_SEARCHES_KEY = 'localBooru_savedSearches';
 const MAX_RECENT_SEARCHES = 10;
 const MAX_PINNED_IN_DROPDOWN = 10;
+const VALID_CATEGORIES = ["general", "artist", "character", "copyright", "metadata"];
+
+
+/**
+ * New: Parses a raw tag string (e.g., "artist:name") into an object.
+ * @param {string} rawTag The raw tag string.
+ * @returns {{name: string, category: string}}
+ */
+function parseTag(rawTag) {
+    if (rawTag.includes(':')) {
+        const [category, name] = rawTag.split(':', 2);
+        if (VALID_CATEGORIES.includes(category)) {
+            return { name, category };
+        }
+    }
+    // If no valid prefix, it's a general tag.
+    return { name: rawTag, category: 'general' };
+}
+
+/**
+ * New: Returns the appropriate CSS class for a given tag category.
+ * @param {string} category The category of the tag.
+ * @returns {string} The CSS class name.
+ */
+function getTagCategoryClass(category) {
+    if (VALID_CATEGORIES.includes(category)) {
+        return `tag-${category}`;
+    }
+    return 'tag-general';
+}
 
 
 // ==========================================================================
@@ -31,7 +61,19 @@ function getSearches() {
     const data = localStorage.getItem(SAVED_SEARCHES_KEY);
     let searches = data ? JSON.parse(data) : { pinned: [], recent: [] };
 
-    // Data Migration: If a pinned item is a string, convert it to the new object structure.
+    // ==========================================================================
+    // ONE-TIME LOCALSTORAGE MIGRATION - TO BE REMOVED IN FUTURE VERSIONS
+    // ==========================================================================
+    // This block of code handles a one-time, client-side data migration for
+    // users who have an older version of the saved searches data in their
+    // browser's localStorage (where pinned searches were stored as simple strings).
+    //
+    // FOR FUTURE MAINTENANCE: This code can be safely removed once the beta
+    // phase is complete and there are no users with the old data format.
+    // The simplified `getSearches` function would then just be:
+    //   const data = localStorage.getItem(SAVED_SEARCHES_KEY);
+    //   return data ? JSON.parse(data) : { pinned: [], recent: [] };
+    //
     let migrationNeeded = false;
     searches.pinned = searches.pinned.map((item, index) => {
         if (typeof item === 'string') {
@@ -44,6 +86,10 @@ function getSearches() {
     if (migrationNeeded) {
         saveSearches(searches);
     }
+    // ==========================================================================
+    // END OF MIGRATION CODE
+    // ==========================================================================
+
     return searches;
 }
 
@@ -65,7 +111,8 @@ function addRecentSearch(query) {
     const cleanedQuery = query.trim();
 
     if (searches.pinned.some(p => p.query === cleanedQuery)) {
-        return; // Do not add to recents if it's already pinned.
+        touchPinnedSearch(cleanedQuery);
+        return; // Do not add to recents if it's already pinned, but update its timestamp.
     }
 
     searches.recent = searches.recent.filter(q => q !== cleanedQuery);
@@ -158,6 +205,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
      * @returns {{prefix: string, term: string}}
      */
     function getAutocompleteContext(fullQuery) {
+        // Corrected: Using original robust splitting logic to handle complex queries.
         const parts = fullQuery.split(/,|\sAND\s|\sOR\s|\||\(|-/i);
         const currentTerm = parts[parts.length - 1].trimStart();
         const prefixLength = fullQuery.length - currentTerm.length;
@@ -200,11 +248,15 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             return;
         }
         suggestionsContainer.innerHTML = '';
-        tags.forEach(tag => {
+        tags.forEach(rawTag => {
             const div = document.createElement('div');
-            div.textContent = tag;
+            const tag = parseTag(rawTag);
+            const categoryClass = getTagCategoryClass(tag.category);
+
+            // New: Create a styled pill inside the suggestion div
+            div.innerHTML = `<span class="suggestion-tag-pill ${categoryClass}">${rawTag}</span>`;
             div.dataset.action = 'select-tag';
-            div.dataset.query = tag;
+            div.dataset.query = rawTag;
             suggestionsContainer.appendChild(div);
         });
         selectedIndex = -1;
@@ -268,7 +320,9 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             onSelect(selectedTag);
         } else {
             const { prefix } = getAutocompleteContext(inputElement.value);
-            inputElement.value = `${prefix}${selectedTag} `;
+            // Append a comma and space for textareas, just a space for inputs
+            const suffix = inputElement.tagName === 'TEXTAREA' ? ', ' : ' ';
+            inputElement.value = `${prefix}${selectedTag}${suffix}`;
         }
         inputElement.focus();
         hideSuggestions();
@@ -294,10 +348,14 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
      * Handles the 'input' event with debouncing to prevent excessive API calls.
      */
     function handleInput() {
-        if (inputElement.value.trim() === '') {
+        // Use getAutocompleteContext to decide if we should fetch.
+        const { term } = getAutocompleteContext(inputElement.value);
+        if (term === '' && inputElement.value.trim() !== '') {
+            // This happens after selecting a tag, we don't want to re-trigger.
             hideSuggestions();
             return;
         }
+
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(fetchTagSuggestions, 250);
     }
@@ -353,6 +411,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
                 selectTagSuggestion(query);
                 break;
             case 'select-query':
+                // Corrected: Restored original behavior. Populates input, does not submit form.
                 inputElement.value = query;
                 touchPinnedSearch(query);
                 hideSuggestions();
