@@ -1,9 +1,9 @@
-import shutil, os, uuid, json, hashlib
+import shutil, os, uuid, json, hashlib, sqlite3
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict
@@ -14,6 +14,10 @@ from pydantic import BaseModel
 class RenameTagRequest(BaseModel):
     new_name: str
 
+# New: Pydantic model for the change category request
+class ChangeCategoryRequest(BaseModel):
+    new_category: str
+
 # --- Application Initialization ---
 app = FastAPI(
     title="local-booru",
@@ -23,6 +27,9 @@ app = FastAPI(
 
 # --- Constants ---
 UNDO_STATE_FILE = "undo_state.json"
+# New: Define valid categories for tags
+VALID_CATEGORIES = {"general", "artist", "character", "copyright", "metadata"}
+
 
 # --- Static File and Template Configuration ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -63,8 +70,74 @@ class Image(Base):
 class Tag(Base):
     __tablename__ = 'tags'
     id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
+    name = Column(String, unique=False, nullable=False) # New: Changed unique to False, as uniqueness is now handled by the constraint
+    # New: Add category to tags. Default is 'general'.
+    category = Column(String, nullable=False, default='general', server_default='general')
     images = relationship("Image", secondary=tags_table, back_populates="tags")
+    # New: A tag must be unique based on its name AND category.
+    __table_args__ = (UniqueConstraint('name', 'category', name='_name_category_uc'),)
+
+
+# ==============================================================================
+# ONE-TIME DATABASE MIGRATION - TO BE REMOVED IN FUTURE VERSIONS
+# ==============================================================================
+# The following function `run_migration()` is designed to upgrade an existing v1
+# database to the v2 schema (which includes tag categories). It is idempotent
+# and safe to run on every startup.
+#
+# FOR FUTURE MAINTENANCE: Once the application is stable and this migration is
+# no longer needed for development or initial user upgrades, this function and
+# its call below (`run_migration()`) should be removed to reduce code complexity
+# and startup time. The application will then rely solely on SQLAlchemy's
+# `Base.metadata.create_all(engine)` for creating new databases from scratch.
+#
+def run_migration():
+    """
+    Applies necessary database schema changes on application startup.
+    It checks for the 'category' column and the unique constraint on the 'tags' table,
+    adding them if they are missing and backfilling existing tags to 'general'.
+    """
+    try:
+        conn = sqlite3.connect(DATABASE_URL.replace("sqlite:///", ""))
+        cursor = conn.cursor()
+        
+        cursor.execute("PRAGMA table_info(tags)")
+        columns = {column[1]: column for column in cursor.fetchall()}
+        
+        if 'category' not in columns:
+            print("INFO:     Database migration required: 'category' column missing.")
+            print("INFO:     Adding 'category' column and backfilling existing tags to 'general'.")
+            cursor.execute("ALTER TABLE tags ADD COLUMN category VARCHAR NOT NULL DEFAULT 'general'")
+            conn.commit()
+            print("INFO:     'category' column added successfully.")
+
+        try:
+            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS _name_category_uc ON tags (name, category)")
+            conn.commit()
+        except sqlite3.OperationalError as e:
+            if "already exists" in str(e):
+                pass
+            else:
+                raise
+
+        if 'name' in columns and columns['name'][5] == 1:
+            cursor.execute("PRAGMA index_list(tags)")
+            indexes = cursor.fetchall()
+            for index in indexes:
+                if index[2] == 1 and "autoindex" in index[1] and "name" in index[1]:
+                    print("INFO:     Found legacy unique index on 'name' column. This is now handled by a composite index.")
+                    break
+
+        conn.close()
+    except Exception as e:
+        print(f"ERROR:    An error occurred during database migration: {e}")
+        pass
+
+# Run the one-time migration before SQLAlchemy handles table creation.
+run_migration()
+# ==============================================================================
+# END OF MIGRATION CODE
+# ==============================================================================
 
 Base.metadata.create_all(engine)
 
@@ -90,18 +163,46 @@ def calculate_sha256(file_like_object) -> str:
     file_like_object.seek(0)
     return sha256_hash.hexdigest()
 
-def get_or_create_tags(db: Session, tag_names: set) -> List[Tag]:
+# New: This function is rewritten to handle categories.
+def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
+    """
+    Parses raw tag inputs (e.g., 'artist:hoge', 'fuga'), separates them by
+    category, and retrieves or creates them in the database.
+    Tags without a prefix are assigned the 'general' category.
+    """
     tags_to_process = []
-    if not tag_names:
+    if not raw_tag_inputs:
         return tags_to_process
-    existing_tags = {tag.name: tag for tag in db.query(Tag).filter(Tag.name.in_(tag_names)).all()}
-    for name in tag_names:
-        if name in existing_tags:
-            tags_to_process.append(existing_tags[name])
+
+    parsed_tags_by_category = {}
+    for raw_tag in raw_tag_inputs:
+        # Split tag into category and name if a prefix exists
+        if ':' in raw_tag:
+            category, name = raw_tag.split(':', 1)
+            # Ensure the provided category is valid, otherwise default to general
+            if category not in VALID_CATEGORIES:
+                category = 'general'
         else:
-            new_tag = Tag(name=name)
-            db.add(new_tag)
-            tags_to_process.append(new_tag)
+            category, name = 'general', raw_tag
+        
+        # Group names by category for efficient querying
+        if category not in parsed_tags_by_category:
+            parsed_tags_by_category[category] = set()
+        parsed_tags_by_category[category].add(name)
+
+    # Query for existing tags in batches by category
+    for category, names in parsed_tags_by_category.items():
+        existing_tags = db.query(Tag).filter(Tag.category == category, Tag.name.in_(names)).all()
+        existing_names = {t.name for t in existing_tags}
+        tags_to_process.extend(existing_tags)
+        
+        # Create new tags for names that were not found
+        for name in names:
+            if name not in existing_names:
+                new_tag = Tag(name=name, category=category)
+                db.add(new_tag)
+                tags_to_process.append(new_tag)
+                
     return tags_to_process
 
 # --- Frontend Page Routes ---
@@ -140,7 +241,17 @@ def image_detail_page(request: Request, image_id: int, db: Session = Depends(get
     image = db.query(Image).options(orm.joinedload(Image.tags)).filter(Image.id == image_id).first()
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
-    tags_str = ", ".join(sorted([tag.name for tag in image.tags]))
+    
+    # New: Format tags for display, adding category prefix for non-general tags.
+    tags_list = []
+    sorted_tags = sorted(image.tags, key=lambda t: (t.category, t.name))
+    for tag in sorted_tags:
+        if tag.category == 'general':
+            tags_list.append(tag.name)
+        else:
+            tags_list.append(f"{tag.category}:{tag.name}")
+    tags_str = ", ".join(tags_list)
+    
     return templates.TemplateResponse("image_detail.html", {
         "request": request, "image": image, "tags_str": tags_str
     })
@@ -154,6 +265,7 @@ def upload_images(
     db: Session = Depends(get_db),
 ):
     tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
+    # New: Uses the category-aware tag creation function
     tags_to_add = get_or_create_tags(db, tag_names)
     uploaded_count = 0
     
@@ -201,6 +313,7 @@ def retag_image(image_id: int, tags: str = Form(""), db: Session = Depends(get_d
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
     tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
+    # New: Uses the category-aware tag creation function
     image.tags = get_or_create_tags(db, tag_names)
     db.commit()
     return RedirectResponse(f"/image/{image_id}", status_code=303)
@@ -224,27 +337,73 @@ def api_get_images(
             for group in and_groups:
                 is_negative = group.startswith('-')
                 group_content = group[1:] if is_negative else group
+                
                 if group_content.startswith('(') and group_content.endswith(')'):
                     or_tags = [t.strip() for t in group_content[1:-1].replace(' or ', '|').split('|') if t.strip()]
                     if or_tags:
-                        or_conditions = [Image.tags.any(Tag.name.ilike(t.replace('*', '%'))) if '*' in t else Image.tags.any(Tag.name == t) for t in or_tags]
-                        condition = or_(*or_conditions)
-                        all_conditions.append(~condition if is_negative else condition)
+                        or_conditions = []
+                        # New: OR logic now handles categories
+                        for t in or_tags:
+                            cat_filt, name_filt = ('general', t)
+                            if ':' in t:
+                                cat_t, name_t = t.split(':', 1)
+                                if cat_t in VALID_CATEGORIES:
+                                    cat_filt, name_filt = cat_t, name_t
+                            
+                            condition = Image.tags.any(and_(Tag.name.ilike(name_filt.replace('*', '%')), Tag.category == cat_filt)) if '*' in name_filt else Image.tags.any(and_(Tag.name == name_filt, Tag.category == cat_filt))
+                            or_conditions.append(condition)
+                        
+                        final_or_condition = or_(*or_conditions)
+                        all_conditions.append(~final_or_condition if is_negative else final_or_condition)
                 else:
-                    condition = Image.tags.any(Tag.name.ilike(group_content.replace('*', '%'))) if '*' in group_content else Image.tags.any(Tag.name == group_content)
+                    # New: AND logic now handles categories
+                    cat_filt, name_filt = ('general', group_content)
+                    if ':' in group_content:
+                        cat_t, name_t = group_content.split(':', 1)
+                        if cat_t in VALID_CATEGORIES:
+                            cat_filt, name_filt = cat_t, name_t
+
+                    condition = Image.tags.any(and_(Tag.name.ilike(name_filt.replace('*', '%')), Tag.category == cat_filt)) if '*' in name_filt else Image.tags.any(and_(Tag.name == name_filt, Tag.category == cat_filt))
                     all_conditions.append(~condition if is_negative else condition)
+
             if all_conditions:
                 query = query.filter(and_(*all_conditions))
+
     total = query.count()
     images = query.order_by(desc(Image.id)).offset((page - 1) * limit).limit(limit).all()
-    result = [{"id": image.id, "filename": image.filename, "tags": sorted([tag.name for tag in image.tags])} for image in images]
+    # New: The API response format for tags is changed to a list of objects.
+    result = [{
+        "id": image.id, 
+        "filename": image.filename, 
+        "tags": sorted([{"name": tag.name, "category": tag.category} for tag in image.tags], key=lambda t: (t['category'], t['name']))
+    } for image in images]
     return JSONResponse({"images": result, "page": page, "limit": limit, "total": total, "has_more": (page * limit) < total})
 
 @app.get("/api/tags/autocomplete")
 def api_autocomplete_tags(q: Optional[str] = Query(None, min_length=1), limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)):
     if not q: return []
-    tags = db.query(Tag.name).filter(Tag.name.ilike(f"{q.strip().lower()}%")).order_by(Tag.name).limit(limit).all()
-    return [tag[0] for tag in tags]
+    query_str = q.strip().lower()
+    
+    # New: Autocomplete now returns full `category:name` for non-general tags and filters by category prefix.
+    tags_query = db.query(Tag.name, Tag.category)
+    if ':' in query_str:
+        category, name_part = query_str.split(':', 1)
+        if category in VALID_CATEGORIES:
+            tags_query = tags_query.filter(Tag.category == category, Tag.name.ilike(f"{name_part}%"))
+        else: # If invalid prefix, search the whole thing as a general tag
+             tags_query = tags_query.filter(Tag.category == 'general', Tag.name.ilike(f"{query_str}%"))
+    else:
+        tags_query = tags_query.filter(Tag.name.ilike(f"{query_str}%"))
+
+    tags = tags_query.order_by(Tag.name).limit(limit).all()
+    
+    results = []
+    for name, category in tags:
+        if category == 'general':
+            results.append(name)
+        else:
+            results.append(f"{category}:{name}")
+    return results
 
 @app.post("/api/images/batch_delete")
 def api_batch_delete_images(image_ids: List[int] = Form(...), db: Session = Depends(get_db)):
@@ -297,7 +456,17 @@ def batch_retag(
         raise HTTPException(status_code=404, detail="Images not found for batch update.")
 
     # Create the state dictionary and save it to a file.
-    images_before_state = {img.id: [tag.name for tag in img.tags] for img in images_to_update}
+    # New: 'before' state now stores full 'category:name' format for accurate undo.
+    images_before_state = {}
+    for img in images_to_update:
+        img_tags = []
+        for tag in sorted(img.tags, key=lambda t: (t.category, t.name)):
+            if tag.category == 'general':
+                img_tags.append(tag.name)
+            else:
+                img_tags.append(f"{tag.category}:{tag.name}")
+        images_before_state[img.id] = img_tags
+
     try:
         with open(UNDO_STATE_FILE, 'w') as f:
             json.dump(images_before_state, f, indent=4)
@@ -305,20 +474,30 @@ def batch_retag(
         # If we can't write the undo file, we shouldn't proceed with the action.
         raise HTTPException(status_code=500, detail=f"Could not save undo state: {e}")
 
-    tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
+    raw_tag_inputs = {t.strip().lower() for t in tags.split(',') if t.strip()}
     
     if action in {"add", "replace"}:
-        tags_for_action = get_or_create_tags(db, tag_names)
+        tags_for_action = get_or_create_tags(db, raw_tag_inputs)
 
     for img in images_to_update:
         if action == "replace":
             img.tags = tags_for_action
         elif action == "add":
-            current_tag_names = {tag.name for tag in img.tags}
-            tags_to_append = [tag for tag in tags_for_action if tag.name not in current_tag_names]
+            current_tags_set = {(tag.name, tag.category) for tag in img.tags}
+            tags_to_append = [tag for tag in tags_for_action if (tag.name, tag.category) not in current_tags_set]
             img.tags.extend(tags_to_append)
         elif action == "remove":
-            img.tags = [tag for tag in img.tags if tag.name not in tag_names]
+            # New: Removal must be category-aware.
+            tags_to_remove_spec = set()
+            for raw_tag in raw_tag_inputs:
+                category, name = ('general', raw_tag)
+                if ':' in raw_tag:
+                    cat, n = raw_tag.split(':', 1)
+                    if cat in VALID_CATEGORIES:
+                        category, name = cat, n
+                tags_to_remove_spec.add((name, category))
+            
+            img.tags = [tag for tag in img.tags if (tag.name, tag.category) not in tags_to_remove_spec]
     
     db.commit()
     return JSONResponse({"message": "Batch tags updated successfully."})
@@ -341,15 +520,28 @@ def batch_undo(db: Session = Depends(get_db)):
     # The keys in the loaded dictionary are strings, so we convert them to int.
     image_ids_to_revert = [int(k) for k in images_before_state.keys()]
     
-    all_tag_names_needed = {name for tag_list in images_before_state.values() for name in tag_list}
-    tags_for_revert = {tag.name: tag for tag in db.query(Tag).filter(Tag.name.in_(all_tag_names_needed)).all()}
+    # New: Logic is updated to correctly revert categorized tags.
+    all_raw_tags_needed = {raw_tag for tag_list in images_before_state.values() for raw_tag in tag_list}
+    tags_for_revert_list = get_or_create_tags(db, all_raw_tags_needed)
+    
+    tag_map = {(tag.name, tag.category): tag for tag in tags_for_revert_list}
 
     images_to_revert = db.query(Image).filter(Image.id.in_(image_ids_to_revert)).all()
 
     for img in images_to_revert:
         # JSON keys are strings, so we must use string version of ID to look up.
-        previous_tag_names = images_before_state.get(str(img.id), [])
-        img.tags = [tags_for_revert[name] for name in previous_tag_names if name in tags_for_revert]
+        previous_raw_tags = images_before_state.get(str(img.id), [])
+        reverted_tags_for_image = []
+        for raw_tag in previous_raw_tags:
+            category, name = ('general', raw_tag)
+            if ':' in raw_tag:
+                cat, n = raw_tag.split(':', 1)
+                if cat in VALID_CATEGORIES:
+                    category, name = cat, n
+
+            if (name, category) in tag_map:
+                reverted_tags_for_image.append(tag_map[(name, category)])
+        img.tags = reverted_tags_for_image
     
     db.commit()
 
@@ -365,9 +557,14 @@ def batch_undo(db: Session = Depends(get_db)):
 
 @app.get("/api/tags/summary")
 def api_get_tags_summary(db: Session = Depends(get_db)):
-    tags_with_counts = (db.query(Tag, func.count(tags_table.c.image_id)).outerjoin(tags_table).group_by(Tag.id).order_by(Tag.name).all())
+    # New: Summary now includes category.
+    tags_with_counts = (db.query(Tag, func.count(tags_table.c.image_id))
+                        .outerjoin(tags_table)
+                        .group_by(Tag.id)
+                        .order_by(Tag.category, Tag.name)
+                        .all())
     untagged_count = db.query(Image).filter(~Image.tags.any()).count()
-    tags_data = [{"id": tag.id, "name": tag.name, "count": count} for tag, count in tags_with_counts]
+    tags_data = [{"id": tag.id, "name": tag.name, "category": tag.category, "count": count} for tag, count in tags_with_counts]
     return JSONResponse({"tags": tags_data, "untagged_count": untagged_count})
 
 @app.post("/api/tags/force_delete/{tag_id}")
@@ -377,7 +574,8 @@ def api_force_delete_tag(tag_id: int, db: Session = Depends(get_db)):
     tag.images.clear()
     db.delete(tag)
     db.commit()
-    return {"message": f"Tag '{tag.name}' and its associations were deleted."}
+    # New: Message is more informative.
+    return {"message": f"Tag '{tag.category}:{tag.name}' and its associations were deleted."}
 
 @app.post("/api/tags/rename/{tag_id}")
 def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends(get_db)):
@@ -385,7 +583,9 @@ def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends
     if not tag_to_rename: raise HTTPException(status_code=404, detail="Tag to rename not found.")
     new_name_clean = request.new_name.strip().lower()
     if not new_name_clean: raise HTTPException(status_code=400, detail="New tag name cannot be empty.")
-    if db.query(Tag).filter(Tag.name == new_name_clean).first(): raise HTTPException(status_code=400, detail=f"A tag named '{new_name_clean}' already exists.")
+    # New: Check for uniqueness within the same category.
+    if db.query(Tag).filter(Tag.name == new_name_clean, Tag.category == tag_to_rename.category).first():
+        raise HTTPException(status_code=400, detail=f"A tag named '{new_name_clean}' already exists in the '{tag_to_rename.category}' category.")
     tag_to_rename.name = new_name_clean
     db.commit()
     return {"message": f"Tag renamed to '{new_name_clean}'."}
@@ -396,12 +596,37 @@ def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form
     tag_to_keep = db.query(Tag).filter(Tag.id == tag_id_to_keep).first()
     tag_to_delete = db.query(Tag).options(orm.selectinload(Tag.images)).filter(Tag.id == tag_id_to_delete).first()
     if not tag_to_keep or not tag_to_delete: raise HTTPException(status_code=404, detail="One or both tags were not found.")
+    
+    # Corrected: The explicit check preventing cross-category merges has been removed
+    # to restore the original, more flexible functionality.
+    
     for image in tag_to_delete.images:
         if tag_to_keep not in image.tags: image.tags.append(tag_to_keep)
+    
     tag_to_delete.images.clear()
     db.delete(tag_to_delete)
     db.commit()
     return {"message": f"Tag '{tag_to_delete.name}' merged into '{tag_to_keep.name}'."}
+
+# New: Endpoint for changing a tag's category
+@app.post("/api/tags/change_category/{tag_id}")
+def api_change_tag_category(tag_id: int, request: ChangeCategoryRequest, db: Session = Depends(get_db)):
+    tag_to_change = db.query(Tag).filter(Tag.id == tag_id).first()
+    if not tag_to_change: raise HTTPException(status_code=404, detail="Tag not found.")
+
+    new_category = request.new_category.strip().lower()
+    if new_category not in VALID_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Invalid category provided. Must be one of: {', '.join(VALID_CATEGORIES)}")
+
+    # Check if a tag with the same name already exists in the new category, which would violate the unique constraint.
+    if db.query(Tag).filter(Tag.name == tag_to_change.name, Tag.category == new_category).first():
+        raise HTTPException(status_code=400, detail=f"A tag named '{tag_to_change.name}' already exists in the '{new_category}' category. Please merge them instead.")
+    
+    original_category = tag_to_change.category
+    tag_to_change.category = new_category
+    db.commit()
+    return {"message": f"Category for tag '{tag_to_change.name}' changed from '{original_category}' to '{new_category}'."}
+
 
 if __name__ == "__main__":
     import uvicorn
