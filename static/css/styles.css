@@ -366,6 +366,148 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .action-button.danger { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 .action-button.danger:hover { background-color: #c53030; border-color: #c53030; }
 
+/* --- 3.3.1 Lightbox Overhaul --- */
+#lightbox-content {
+    display: flex;
+    flex-direction: row; /* Main axis is horizontal */
+    max-width: 95%;
+    max-height: 95%;
+    width: 90vw;
+    height: 90vh;
+    background-color: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+#lightbox-image-container {
+    flex-shrink: 1;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow: hidden;
+    position: relative;
+    transition: width 0.3s ease-in-out;
+}
+#lightbox-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+#lightbox-sidebar {
+    width: 350px;
+    flex-shrink: 0;
+    background-color: var(--color-bg-secondary);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: width 0.3s ease-in-out;
+}
+
+#lightbox-edit-mode-content,
+#lightbox-view-mode-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* State management via classes */
+#lightbox-content.view-mode #lightbox-edit-mode-content { display: none; }
+#lightbox-content.edit-mode #lightbox-view-mode-content { display: none; }
+
+#lightbox-content.edit-mode #lightbox-image-container {
+    /* Make image container smaller in edit mode */
+    width: calc(100% - 350px);
+}
+
+#lightbox-tags-display {
+    justify-content: flex-start;
+    padding: 1rem 0;
+    flex-grow: 1;
+    align-content: flex-start;
+}
+#lightbox-view-mode-content .lightbox-actions {
+    margin-top: auto; /* Pushes actions to the bottom */
+    display: flex;
+    gap: 1rem;
+}
+
+/* Edit Mode Specific Styles */
+#lightbox-tag-editor-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+#lightbox-tag-editor-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    background-color: var(--color-bg-primary);
+    border-radius: var(--border-radius);
+    min-height: 100px;
+    align-content: flex-start;
+    overflow-y: auto;
+}
+#lightbox-tag-editor-pills .tag-pill {
+    display: flex;
+    align-items: center;
+}
+.remove-tag-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.1em;
+    font-weight: bold;
+    margin-left: 0.5rem;
+    padding: 0 0.2rem;
+    cursor: pointer;
+    opacity: 0.7;
+    line-height: 1;
+}
+.remove-tag-btn:hover { opacity: 1; }
+#lightbox-tag-input {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+}
+#lightbox-suggestions {
+    /* Ensure suggestions appear correctly within the sidebar */
+    position: static;
+    display: block;
+    border: 1px solid var(--color-border);
+    border-top: none;
+    max-height: 200px;
+}
+#lightbox-edit-mode-content .lightbox-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 1rem;
+}
+#lightbox-edit-mode-content .action-button {
+    flex-grow: 1;
+}
+
+/* General Lightbox Cleanup */
+.lightbox-info { display: none; } /* Hide old info box */
+#lightbox-close { z-index: 101; }
+.lightbox-nav {
+    /* Adjust nav buttons to not overlap with the new sidebar */
+    width: calc(100% - 350px); 
+}
+#lightbox-content.view-mode .lightbox-nav {
+    width: 100%;
+}
 
 /* --- 3.4 Image Detail Page --- */
 .detail-page-container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
