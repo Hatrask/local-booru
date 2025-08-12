@@ -9,17 +9,6 @@ from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict
 
-import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile
-from datetime import datetime, timezone
-from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint, DateTime
-from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
-from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional, Dict
-
 # --- Constants ---
 DATABASE_URL = "sqlite:///database.db"
 UNDO_STATE_FILE = "undo_state.json"
