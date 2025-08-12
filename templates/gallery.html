@@ -61,20 +61,25 @@
                 </div>
 
                 <div id="lightbox-edit-mode-content">
-                    <h4>Edit Tags</h4>
-                    <div id="lightbox-tag-editor-container">
-                        <div id="lightbox-tag-editor-pills"></div>
-                        <div class="autocomplete-container">
-                             <input type="text" id="lightbox-tag-input" placeholder="Add or search for a tag..." autocomplete="off">
-                             <div class="suggestions" id="lightbox-suggestions"></div>
+                    <!-- This container now uses the shared style -->
+                    <div id="lightbox-tag-editor-container" class="tag-panel-container">
+                        <h5 class="tag-panel-title">Current Tags</h5>
+                        <div class="tag-panel-content">
+                            <div id="lightbox-tag-editor-pills"></div>
+                            <div class="autocomplete-container">
+                                 <input type="text" id="lightbox-tag-input" placeholder="Add or search for a tag..." autocomplete="off">
+                            </div>
                         </div>
                     </div>
-                    <div id="lightbox-tag-helper">
-                        <h5 id="tag-helper-title">Recent Tags</h5>
-                        <div id="tag-helper-content-area">
+
+                    <!-- The helper also uses the shared style for consistency -->
+                    <div id="lightbox-tag-helper" class="tag-panel-container">
+                        <h5 id="tag-helper-title" class="tag-panel-title">Recent Tags</h5>
+                        <div id="tag-helper-content-area" class="tag-panel-content">
                             <!-- Dynamic content (recents or search results) is rendered here -->
                         </div>
                     </div>
+
                     <div class="lightbox-actions">
                         <button id="lightbox-save-btn" class="action-button">Save</button>
                         <button id="lightbox-cancel-btn" class="action-button">Cancel</button>
