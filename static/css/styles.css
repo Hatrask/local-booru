@@ -2,23 +2,8 @@
    STYLESHEET TABLE OF CONTENTS
    ==========================================================================
    1. Global Styles & Root Variables
-      - CSS Custom Properties (:root)
-      - Body & Typography (body, h1, a, code, etc.)
-
    2. Reusable Components
-      - 2.1 Autocomplete & Tag Pills
-      - 2.2 Generic Action Button
-      - 2.3 Toast Notifications
-
    3. Page-Specific Styles
-      - 3.1 Index Page
-      - 3.2 Upload Page
-      - 3.3 Gallery & Lightbox
-      - 3.4 Image Detail Page
-      - 3.5 Batch Actions Page
-      - 3.6 Tag Manager Page
-      - 3.7 Saved Searches Page
-      - 3.8 Help Page
    ========================================================================== */
 
 
@@ -288,6 +273,7 @@ form.search-form button {
 }
 form.search-form button:hover { background-color: var(--color-accent-hover); }
 
+/* This is the masonry layout for the gallery grid. */
 .gallery {
     column-width: var(--thumb-width);
     column-count: auto;
@@ -296,13 +282,14 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .thumb {
     width: 100%;
     margin-bottom: 1rem;
-    break-inside: avoid;
-    display: inline-block;
+    break-inside: avoid; /* Prevents thumbnails from breaking across columns. */
+    display: inline-block; /* Required for the column layout to work. */
     box-sizing: border-box;
     text-align: center;
     position: relative;
     border-radius: var(--border-radius);
-    /* Corrected: This is a standard fix for rendering/event bugs in column layouts */
+    /* This creates a new stacking context and is a standard fix for rendering/event
+       bugs that can occur with multi-column layouts in some browsers. */
     transform: translateZ(0);
 }
 .thumb img {
@@ -313,6 +300,7 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     border-radius: var(--border-radius);
 }
 
+/* This is the dynamic tooltip that follows the mouse. */
 #tag-tooltip {
     position: fixed;
     background-color: rgba(18, 18, 18, 0.95);
@@ -327,12 +315,14 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-    pointer-events: auto;
+    pointer-events: auto; /* Allow interaction with the tooltip and its content. */
 }
 #tag-tooltip.visible {
     opacity: 1;
     visibility: visible;
 }
+/* This class is used briefly by JS to calculate the tooltip's dimensions
+   without causing a visual flicker on the screen. */
 #tag-tooltip.visible-calculating {
     visibility: hidden !important;
     display: block !important;
@@ -397,28 +387,23 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 /* --- 3.5 Batch Actions Page --- */
 #selection-controls, .page-actions { text-align: center; margin: 1rem 0; }
 .batch-gallery {
-    /* New: Apply masonry layout to batch actions page as well */
     column-width: var(--thumb-width);
     column-count: auto;
     column-gap: 1rem;
 }
 .batch-gallery .thumb {
-    /* New: Styling for items within the masonry layout */
     width: 100%;
     margin-bottom: 1rem;
     break-inside: avoid;
     display: inline-block;
-
-    /* Keep existing styles */
     border: 2px solid var(--color-border);
     user-select: none;
     cursor: pointer;
     overflow: visible;
-    transform: translateZ(0); /* New: Fix for column layout event bugs */
+    transform: translateZ(0);
 }
 .batch-gallery .thumb.selected { border-color: var(--color-accent); }
 .batch-gallery .thumb img { pointer-events: none; }
-/* New: Center the tag pills in batch mode */
 .batch-gallery .tag-pills-container {
     justify-content: center;
 }

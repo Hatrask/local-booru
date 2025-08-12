@@ -87,10 +87,10 @@
         const urlParams = new URLSearchParams(window.location.search);
         const query = urlParams.get('q') || "";
         let currentPage = parseInt(urlParams.get('page')) || 1;
-        let currentImagesOnPage = []; // Stores image data for the current page to help with select/deselect all.
+        let currentImagesOnPage = []; // Caches image data for the current page.
         let isLoading = false;        // Prevents multiple simultaneous API calls.
         
-        // The Set of all selected image IDs, persisted in localStorage.
+        // The Set of all selected image IDs, persisted across page loads in localStorage.
         let selectedImageIds = new Set(JSON.parse(localStorage.getItem('batchSelectedImageIds') || "[]"));
 
         // --- 4. CORE FUNCTIONS (Rendering & Page State) ---
@@ -108,7 +108,6 @@
             const newUrl = `/batch_actions?q=${encodeURIComponent(query)}&page=${currentPage}`;
             window.history.pushState({ page: currentPage, query: query }, '', newUrl);
 
-            // Save the active search to recent history.
             if (query) {
                 addRecentSearch(query);
             }
@@ -130,13 +129,13 @@
         }
 
         /**
-         * New: Generates HTML for color-coded tag pills for display.
-         * @param {Array<Object>} tags - Array of tag objects [{name, category}].
+         * Generates the HTML for a set of color-coded tag pills.
+         * @param {Array<Object>} tags - An array of tag objects [{name, category}].
          * @returns {string} The HTML string for the tag pills.
          */
         function renderTagPills(tags) {
             if (!tags || tags.length === 0) {
-                return '&nbsp;'; // Return non-breaking space to maintain layout
+                return '&nbsp;'; // Return non-breaking space to maintain layout.
             }
             return tags.map(tag => {
                 const categoryClass = getTagCategoryClass(tag.category);
@@ -163,7 +162,6 @@
                 if (selectedImageIds.has(img.id)) {
                     thumb.classList.add('selected');
                 }
-                // New: Render tags using the pill container
                 const tagsHTML = `<div class="tag-pills-container">${renderTagPills(img.tags)}</div>`;
                 thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy"><div class="tags">${tagsHTML}</div>`;
                 galleryGrid.appendChild(thumb);
@@ -244,7 +242,7 @@
          */
         async function handleBatchRetag(imageIds, action) {
             const tags = batchTagsInput.value.trim();
-            if (!tags && action !== 'replace') {
+            if (!tags && action !== 'replace') { // 'replace' action can have empty tags to clear them.
                 showToast(`The '${action}' action requires at least one tag.`, 'info');
                 return;
             }
@@ -270,7 +268,7 @@
         }
         
         /**
-         * A simple UI helper to show or hide the tag input based on the selected action.
+         * A UI helper to show/hide the tag input based on the selected action.
          */
         function toggleTagInputVisibility() {
             const isDeleteAction = actionSelect.value === 'delete';
@@ -281,14 +279,13 @@
         // --- 6. INITIALIZATION & EVENT LISTENERS ---
         
         /**
-         * Handles all global keydown events for navigation shortcuts.
+         * Handles global keydown events for navigation shortcuts.
          * @param {KeyboardEvent} e - The keyboard event.
          */
         function handleKeydown(e) {
             // Ignore key presses if the user is typing in an input field.
             if (e.target.matches('input, textarea')) return;
 
-            // Page navigation
             const prevPageBtn = document.getElementById('prev-page');
             const nextPageBtn = document.getElementById('next-page');
 
@@ -374,7 +371,7 @@
 
             document.addEventListener('keydown', handleKeydown);
 
-            // --- Initial Setup Calls ---
+            // Initial Setup Calls
             setupTagAutocomplete(searchInput, suggestionsSearchBox, { showSavedSearches: true });
             setupTagAutocomplete(batchTagsInput, suggestionsBatchBox);
             toggleTagInputVisibility();

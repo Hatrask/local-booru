@@ -1,13 +1,13 @@
 /**
  * autocomplete.js
  *
- * This file contains all the logic for two related features:
+ * This file contains the logic for two related features:
  * 1. A reusable tag autocomplete component that fetches suggestions from the API.
  * 2. A client-side saved search manager that uses localStorage to persist
  *    a user's "pinned" and "recent" search queries.
  *
- * The main exported function is `setupTagAutocomplete`, which can be configured
- * to provide only tag suggestions or a combination of tags and saved searches.
+ * The main exported function, `setupTagAutocomplete`, can be configured to provide
+ * only tag suggestions or a combination of tags and saved searches.
  */
 
 // ==========================================================================
@@ -18,11 +18,10 @@ const MAX_RECENT_SEARCHES = 10;
 const MAX_PINNED_IN_DROPDOWN = 10;
 const VALID_CATEGORIES = ["general", "artist", "character", "copyright", "metadata"];
 
-
 /**
- * New: Parses a raw tag string (e.g., "artist:name") into an object.
+ * Parses a raw tag string (e.g., "artist:name") into its constituent parts.
  * @param {string} rawTag The raw tag string.
- * @returns {{name: string, category: string}}
+ * @returns {{name: string, category: string}} An object with the tag's name and category.
  */
 function parseTag(rawTag) {
     if (rawTag.includes(':')) {
@@ -31,12 +30,12 @@ function parseTag(rawTag) {
             return { name, category };
         }
     }
-    // If no valid prefix, it's a general tag.
+    // If no valid prefix is found, it defaults to the 'general' category.
     return { name: rawTag, category: 'general' };
 }
 
 /**
- * New: Returns the appropriate CSS class for a given tag category.
+ * Returns the appropriate CSS class for a given tag category for color-coding.
  * @param {string} category The category of the tag.
  * @returns {string} The CSS class name.
  */
@@ -53,8 +52,8 @@ function getTagCategoryClass(category) {
 // ==========================================================================
 
 /**
- * Retrieves and migrates the saved searches object from localStorage.
- * This includes a seamless, one-time migration for users with the old data format.
+ * Retrieves the saved searches object from localStorage.
+ * Includes a one-time migration for users with an older data format.
  * @returns {{pinned: {query: string, lastUsed: number}[], recent: string[]}}
  */
 function getSearches() {
@@ -64,16 +63,10 @@ function getSearches() {
     // ==========================================================================
     // ONE-TIME LOCALSTORAGE MIGRATION - TO BE REMOVED IN FUTURE VERSIONS
     // ==========================================================================
-    // This block of code handles a one-time, client-side data migration for
-    // users who have an older version of the saved searches data in their
-    // browser's localStorage (where pinned searches were stored as simple strings).
+    // This block handles a client-side data migration for users who have an
+    // older version of the saved searches data in localStorage.
     //
-    // FOR FUTURE MAINTENANCE: This code can be safely removed once the beta
-    // phase is complete and there are no users with the old data format.
-    // The simplified `getSearches` function would then just be:
-    //   const data = localStorage.getItem(SAVED_SEARCHES_KEY);
-    //   return data ? JSON.parse(data) : { pinned: [], recent: [] };
-    //
+    // FOR FUTURE MAINTENANCE: This code can be safely removed after the beta phase.
     let migrationNeeded = false;
     searches.pinned = searches.pinned.map((item, index) => {
         if (typeof item === 'string') {
@@ -103,6 +96,7 @@ function saveSearches(searches) {
 
 /**
  * Adds a search query to the list of recent searches.
+ * If the search is already pinned, its `lastUsed` timestamp is updated instead.
  * @param {string} query The search query to add.
  */
 function addRecentSearch(query) {
@@ -110,11 +104,14 @@ function addRecentSearch(query) {
     const searches = getSearches();
     const cleanedQuery = query.trim();
 
-    if (searches.pinned.some(p => p.query === cleanedQuery)) {
+    // If the search is pinned, just update its usage timestamp.
+    const pinnedItem = searches.pinned.find(p => p.query === cleanedQuery);
+    if (pinnedItem) {
         touchPinnedSearch(cleanedQuery);
-        return; // Do not add to recents if it's already pinned, but update its timestamp.
+        return;
     }
 
+    // Add to recents, ensuring no duplicates and respecting the max limit.
     searches.recent = searches.recent.filter(q => q !== cleanedQuery);
     searches.recent.unshift(cleanedQuery);
     if (searches.recent.length > MAX_RECENT_SEARCHES) {
@@ -145,6 +142,7 @@ function unpinSearch(query) {
     const pinnedItem = searches.pinned.find(p => p.query === query);
     if (pinnedItem) {
         searches.pinned = searches.pinned.filter(p => p.query !== query);
+        // Add it back to recents if it's not already there.
         if (!searches.recent.includes(query)) {
             searches.recent.unshift(query);
         }
@@ -153,7 +151,7 @@ function unpinSearch(query) {
 }
 
 /**
- * Deletes a query from either the pinned or recent list.
+ * Deletes a query from both the pinned and recent lists.
  * @param {string} query The query to delete.
  */
 function deleteSearch(query) {
@@ -164,7 +162,7 @@ function deleteSearch(query) {
 }
 
 /**
- * Updates the 'lastUsed' timestamp for a pinned search to mark it as recently used.
+ * Updates the 'lastUsed' timestamp for a pinned search.
  * @param {string} query The query that was used.
  */
 function touchPinnedSearch(query) {
@@ -193,19 +191,16 @@ function touchPinnedSearch(query) {
 function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) {
     const { onSelect, showSavedSearches = false } = options;
 
-    // --- Component State ---
     let debounceTimeout;
     let selectedIndex = -1;
 
-    // --- Core Logic ---
-
     /**
-     * Analyzes the input's value to determine the current tag being typed for context-aware suggestions.
+     * Determines the current term being typed for context-aware suggestions.
+     * It intelligently splits the input by various search operators.
      * @param {string} fullQuery The entire string from the input field.
      * @returns {{prefix: string, term: string}}
      */
     function getAutocompleteContext(fullQuery) {
-        // Corrected: Using original robust splitting logic to handle complex queries.
         const parts = fullQuery.split(/,|\sAND\s|\sOR\s|\||\(|-/i);
         const currentTerm = parts[parts.length - 1].trimStart();
         const prefixLength = fullQuery.length - currentTerm.length;
@@ -214,7 +209,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     }
 
     /**
-     * Fetches tag suggestions from the backend API.
+     * Fetches tag suggestions from the backend API based on the current term.
      */
     async function fetchTagSuggestions() {
         const { term } = getAutocompleteContext(inputElement.value);
@@ -227,7 +222,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             if (!response.ok) throw new Error('Network request failed');
             const tags = await response.json();
 
-            // Prevent race conditions by checking if the term is still the same.
+            // Prevent race conditions by ensuring the term hasn't changed while fetching.
             if (getAutocompleteContext(inputElement.value).term === term) {
                 renderTagSuggestions(tags);
             }
@@ -236,11 +231,9 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
         }
     }
 
-    // --- DOM Rendering ---
-
     /**
-     * Renders the list of tag suggestions.
-     * @param {string[]} tags An array of tag strings.
+     * Renders the list of tag suggestions as color-coded pills.
+     * @param {string[]} tags An array of raw tag strings from the API.
      */
     function renderTagSuggestions(tags) {
         if (!tags || tags.length === 0) {
@@ -253,7 +246,6 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             const tag = parseTag(rawTag);
             const categoryClass = getTagCategoryClass(tag.category);
 
-            // New: Create a styled pill inside the suggestion div
             div.innerHTML = `<span class="suggestion-tag-pill ${categoryClass}">${rawTag}</span>`;
             div.dataset.action = 'select-tag';
             div.dataset.query = rawTag;
@@ -264,7 +256,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     }
 
     /**
-     * Renders the saved and recent searches.
+     * Renders the saved and recent searches in the suggestions dropdown.
      */
     function renderSavedSearches() {
         const searches = getSearches();
@@ -274,6 +266,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
         }
 
         suggestionsContainer.innerHTML = '';
+        // Sort pinned searches by most recently used for relevance.
         const sortedPinned = [...searches.pinned].sort((a, b) => b.lastUsed - a.lastUsed);
         const pinnedToShow = sortedPinned.slice(0, MAX_PINNED_IN_DROPDOWN);
         let html = '';
@@ -312,7 +305,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     }
 
     /**
-     * Executes the selection of a tag suggestion, running a custom callback or default behavior.
+     * Handles the selection of a tag, either via custom callback or default behavior.
      * @param {string} selectedTag The tag string that was selected.
      */
     function selectTagSuggestion(selectedTag) {
@@ -320,7 +313,6 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             onSelect(selectedTag);
         } else {
             const { prefix } = getAutocompleteContext(inputElement.value);
-            // Append a comma and space for textareas, just a space for inputs
             const suffix = inputElement.tagName === 'TEXTAREA' ? ', ' : ' ';
             inputElement.value = `${prefix}${selectedTag}${suffix}`;
         }
@@ -329,7 +321,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     }
 
     /**
-     * Updates the visual highlight on the currently selected suggestion for keyboard navigation.
+     * Updates the visual highlight for keyboard navigation.
      */
     function updateHighlight() {
         const items = Array.from(suggestionsContainer.children).filter(child => !child.classList.contains('suggestions-header'));
@@ -342,20 +334,15 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     function showSuggestions() { suggestionsContainer.style.display = 'block'; }
     function hideSuggestions() { suggestionsContainer.style.display = 'none'; selectedIndex = -1; }
 
-    // --- Event Handlers ---
-
     /**
      * Handles the 'input' event with debouncing to prevent excessive API calls.
      */
     function handleInput() {
-        // Use getAutocompleteContext to decide if we should fetch.
         const { term } = getAutocompleteContext(inputElement.value);
         if (term === '' && inputElement.value.trim() !== '') {
-            // This happens after selecting a tag, we don't want to re-trigger.
             hideSuggestions();
             return;
         }
-
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(fetchTagSuggestions, 250);
     }
@@ -411,7 +398,6 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
                 selectTagSuggestion(query);
                 break;
             case 'select-query':
-                // Corrected: Restored original behavior. Populates input, does not submit form.
                 inputElement.value = query;
                 touchPinnedSearch(query);
                 hideSuggestions();
@@ -444,10 +430,10 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
         });
     }
 
-    // Use 'mousedown' to prevent the input's 'blur' event from firing first.
+    // Use 'mousedown' to prevent the input from losing focus before the click is registered.
     suggestionsContainer.addEventListener('mousedown', handleSuggestionInteraction);
 
-    // Hide suggestions if the user clicks anywhere else.
+    // Hide suggestions if the user clicks anywhere else on the page.
     document.addEventListener('click', (e) => {
         if (e.target !== inputElement && !suggestionsContainer.contains(e.target)) {
             hideSuggestions();
