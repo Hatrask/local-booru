@@ -112,7 +112,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
     const paginationDiv = document.getElementById('pagination');
-    const batchEditLink = document.getElementById('batchEditLink');
     const thumbnailControls = document.getElementById('thumbnail-controls');
     const mainTagInput = document.getElementById('tagInput');
     const mainSuggestionsBox = document.querySelector('.suggestions');
@@ -690,7 +689,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initial setup calls
         const savedSize = localStorage.getItem('thumbSize') || DEFAULT_THUMB_SIZE;
         applyThumbSize(savedSize);
-        if (query) { batchEditLink.style.display = 'inline-block'; }
 
         // General event listeners
         lightboxClose.addEventListener('click', closeLightbox);
