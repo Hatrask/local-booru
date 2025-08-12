@@ -15,9 +15,10 @@
         <ul>
             <li><a href="#uploading">1. Uploading Images</a></li>
             <li><a href="#gallery">2. The Gallery & Searching</a></li>
-            <li><a href="#advanced">3. Advanced Management</a></li>
-            <li><a href="#cli">4. Command-Line Utilities</a></li>
-            <li><a href="#shortcuts">5. Keyboard Shortcuts</a></li>
+            <li><a href="#categories">3. The Tag Category System</a></li>
+            <li><a href="#advanced">4. Advanced Management</a></li>
+            <li><a href="#cli">5. Command-Line Utilities</a></li>
+            <li><a href="#shortcuts">6. Keyboard Shortcuts</a></li>
         </ul>
     </div>
 
@@ -28,30 +29,33 @@
     </p>
     <ul>
         <li>
-            <strong>Selecting Files:</strong> Click the "Select image files" button to open a file dialog. You can select or drag & drop multiple image files at once. A small preview of each selected image will appear.
+            <strong>Selecting Files:</strong> You can select or drag & drop multiple image files and folders at once. A small preview of each selected image will appear.
         </li>
         <li>
-            <strong>Initial Tagging:</strong> Before you upload, you can add tags in the "Tags (comma-separated)" box. Every image in the batch will receive these initial tags. This is great for adding an artist's name or a common theme to a set of images.
+            <strong>Initial Tagging:</strong> Before you upload, you can add tags in the "Tags (comma-separated)" box. Every image in the batch will receive these initial tags. You can also add categorized tags here (see the section on the category system).
         </li>
         <li>
-            <strong>Uploading:</strong> Click the "Upload" button. The page will show a success message when the process is complete. The system automatically detects and skips any images you've already uploaded.
+            <strong>Uploading:</strong> Click the "Upload" button. The system automatically detects and skips any images you've already uploaded based on their content hash.
         </li>
     </ul>
 
     <!-- Section 2: The Gallery & Searching -->
     <h2 id="gallery">2. The Gallery & Searching</h2>
     <p>
-        The <strong><a href="/gallery">Gallery</a></strong> is the main page for viewing your collection. From here, you can browse, search, and inspect your images.
+        The <strong><a href="/gallery">Gallery</a></strong> is the main page for viewing your collection.
     </p>
     <ul>
         <li>
-            <strong>Thumbnail Size:</strong> Use the "Small," "Medium," and "Large" buttons at the top to change the size of the image thumbnails. Your preference is saved in your browser.
+            <strong>Masonry Layout:</strong> Images are displayed in a "masonry-style" grid that elegantly handles images of different heights.
         </li>
         <li>
-            <strong>Lightbox Viewer:</strong> Clicking on any thumbnail opens a full-size image viewer (a "lightbox"). You can navigate between images using the arrow buttons or your keyboard.
+            <strong>Tag Tooltips:</strong> To keep the view clean, tags are hidden by default. Press the <code>T</code> key on your keyboard to toggle a mode where hovering over an image will display its tags in a tooltip. Your preference for this mode is saved in your browser.
         </li>
         <li>
-            <strong>Editing or deleting from the Lightbox:</strong> Inside the lightbox, you will see the image's ID and its current tags. Click the "Edit Tags" button to go to a dedicated page to modify them, or "Delete" to remove it permanently from your collection.
+            <strong>Lightbox Viewer:</strong> Clicking on any thumbnail opens a full-size image viewer. You can navigate between images using the arrow buttons or your keyboard.
+        </li>
+        <li>
+            <strong>Editing or Deleting:</strong> Inside the lightbox, click the "Edit Tags" button to go to a dedicated page to modify them, or "Delete" to remove the image permanently.
         </li>
     </ul>
 
@@ -60,17 +64,17 @@
     
     <h4>Basic Search (AND Logic)</h4>
 	<p>
-		Tags are separated by commas (<code>,</code>) or the word <code>AND</code>. This finds images that have <strong>all</strong> of the specified tags.
+		Tags are separated by commas (<code>,</code>). This finds images that have <strong>all</strong> of the specified tags.
 	</p>
     <ul class="example-list">
         <li><code>cat, dog</code> - Finds images tagged with both <code>cat</code> AND <code>dog</code>.</li>
-		<li><code>cat AND dog</code> - Same as above.</li>
+		<li><code>artist:someartist, character:somechar</code> - Finds images with a specific artist AND a specific character.</li>
     </ul>
-
+    
     <h4>Advanced Operators</h4>
     <ul>
         <li>
-            <strong>OR Logic:</strong> Use parentheses with a vertical bar (<code>|</code>) or the word <code>OR</code>.
+            <strong>OR Logic:</strong> Use parentheses with a vertical bar (<code>|</code>).
             <ul class="example-list">
                 <li><code>(cat|dog)</code> - Finds images with either the <code>cat</code> OR <code>dog</code> tag.</li>
             </ul>
@@ -79,16 +83,18 @@
             <strong>Exclusion (NOT):</strong> To exclude images with a certain tag, prefix it with a hyphen (<code>-</code>).
             <ul class="example-list">
                 <li><code>-dog</code> - Finds all images that do NOT have the <code>dog</code> tag.</li>
+                <li><code>-character:reimu_hakurei</code> - Finds all images that are NOT of that character.</li>
             </ul>
         </li>
     </ul>
 
     <h4>Wildcard Search</h4>
     <p>
-        Use an asterisk (<code>*</code>) as a wildcard to match parts of a tag.
+        Use an asterisk (<code>*</code>) as a wildcard to match parts of a tag name.
     </p>
     <ul class="example-list">
         <li><code>cat*</code> - Finds tags starting with "cat," like <code>caterpillar</code> or <code>catgirl</code>.</li>
+        <li><code>artist:h*</code> - Finds artists starting with "h".</li>
     </ul>
 
     <h4>Special Queries</h4>
@@ -96,17 +102,31 @@
         <li><code>untagged</code> - A special keyword to find all images that have no tags assigned to them.</li>
     </ul>
 
-    <h3>Saved Searches</h3>
-    <p>To make searching even faster, the application automatically remembers your searches and allows you to "pin" your favorites.</p>
+    <!-- Section 3: Tag Categories -->
+    <h2 id="categories">3. The Tag Category System</h2>
+    <p>
+        To allow for more powerful organization, all tags belong to a category. This helps distinguish between different types of information, such as the artist of an image versus the subject matter. Tags are color-coded by their category for easy identification.
+    </p>
+    <h4>The Five Categories</h4>
     <ul>
-        <li><strong>Automatic Recent Searches:</strong> The last 10 unique searches you perform are automatically saved as "Recent Searches."</li>
-        <li><strong>Pinned Searches:</strong> You can permanently save a complex search by "pinning" it.</li>
-        <li><strong>Accessing Searches:</strong> Simply click on an empty search bar on the <strong>Homepage</strong>, <strong>Gallery</strong>, or <strong>Batch Actions</strong> page. A dropdown will appear showing your pinned and recent searches. Clicking one will instantly fill the search bar.</li>
-        <li><strong>Managing Searches:</strong> For full control, navigate to the <strong><a href="/saved_searches">Saved Searches</a></strong> page. Here you can view all searches, pin or unpin them, and delete any you no longer need.</li>
+        <li><code class="tag-pill tag-general">general</code>: For standard descriptive tags (e.g., <code>1girl</code>, <code>smile</code>, <code>outdoors</code>). This is the default category if none is specified.</li>
+        <li><code class="tag-pill tag-artist">artist</code>: For the creator of the artwork.</li>
+        <li><code class="tag-pill tag-character">character</code>: For named characters depicted in the image.</li>
+        <li><code class="tag-pill tag-copyright">copyright</code>: For the series, franchise, or game the content is from.</li>
+        <li><code class="tag-pill tag-metadata">metadata</code>: For technical details or user-specific information (e.g., <code>highres</code>, <code>comic</code>, <code>to_sort</code>).</li>
     </ul>
 
-    <!-- Section 3: Advanced Management -->
-    <h2 id="advanced">3. Advanced Management</h2>
+    <h4>How to Use Categories</h4>
+    <p>
+        You use categories by adding a prefix to your tag, followed by a colon (<code>:</code>). If you do not provide a prefix, the tag will automatically be assigned to the `general` category.
+    </p>
+    <ul class="example-list">
+        <li>Adding tags: <code>artist:someartist, character:somechar, 1girl, smile</code></li>
+        <li>Searching: <code>artist:someartist, -character:anotherchar</code></li>
+    </ul>
+
+    <!-- Section 4: Advanced Management -->
+    <h2 id="advanced">4. Advanced Management</h2>
     <p>For power users, the Batch Actions and Tag Manager pages provide tools for large-scale organization.</p>
     
     <h3>Batch Actions</h3>
@@ -122,19 +142,14 @@
     <h3>Tag Manager</h3>
     <p>The <strong><a href="/tag_manager">Tag Manager</a></strong> is for cleaning up the tags themselves, not the images.</p>
     <ul>
-        <li>
-            <strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).
-        </li>
-        <li>
-            <strong>Merge:</strong> Combines two tags. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).
-        </li>
-        <li>
-            <strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong>
-        </li>
+        <li><strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).</li>
+        <li><strong>Change Category:</strong> Changes a tag's category. For example, you can move an incorrectly categorized tag from `general` to `artist`.</li>
+        <li><strong>Merge:</strong> Combines two tags into one. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).</li>
+        <li><strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong></li>
     </ul>
     
-    <!-- Section 4: Command-Line Utilities -->
-    <h2 id="cli">4. Command-Line Utilities</h2>
+    <!-- Section 5: Command-Line Utilities -->
+    <h2 id="cli">5. Command-Line Utilities</h2>
     <p>
         Some maintenance tasks are performed using scripts from the command line, not the web interface. You must have terminal access to the server where the application is running to use these tools.
     </p>
@@ -164,8 +179,8 @@
         </ol>
     </div>
 
-    <!-- Section 5: Keyboard Shortcuts -->
-    <h2 id="shortcuts">5. Keyboard Shortcuts</h2>
+    <!-- Section 6: Keyboard Shortcuts -->
+    <h2 id="shortcuts">6. Keyboard Shortcuts</h2>
     <p>You can navigate the site quickly using your keyboard.</p>
     <ul>
         <li>
@@ -173,6 +188,7 @@
             <ul>
                 <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
                 <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
+                <li><code>T</code>: Toggle the tag tooltip display mode on and off.</li>
             </ul>
         </li>
         <li>

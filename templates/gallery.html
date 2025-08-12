@@ -50,6 +50,8 @@
         </div>
     </div>
 
+    <div id="tag-tooltip" class="thumb-tooltip"></div>
+
 <script src="/static/js/notifications.js"></script>
 <script src="/static/js/autocomplete.js"></script>
 
@@ -57,8 +59,11 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. CONFIGURATION & CONSTANTS ---
-    const IMAGES_PER_PAGE = 20;
+    const IMAGES_PER_PAGE = 40;
     const DEFAULT_THUMB_SIZE = '250';
+    const TOOLTIP_SHOW_DELAY = 100;
+    const TOOLTIP_HIDE_DELAY = 50;
+    const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled';
 
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
@@ -67,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnailControls = document.getElementById('thumbnail-controls');
     const tagInput = document.getElementById('tagInput');
     const suggestionsBox = document.querySelector('.suggestions');
+    const tagTooltip = document.getElementById('tag-tooltip');
     
     // Lightbox elements
     const lightboxModal = document.getElementById('lightbox-modal');
@@ -82,10 +88,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const query = urlParams.get('q') || "";
     let currentPage = parseInt(urlParams.get('page')) || 1;
     let totalPages = 0;
-    let currentImages = [];       // Stores the image data for the current page
-    let currentImageIndex = -1; // Index of the currently viewed image in the lightbox
-    let hasMorePages = true;
-    let isLoading = false;        // Flag to prevent multiple simultaneous API calls
+    let currentImages = [];       // Caches image data for the current gallery page.
+    let currentImageIndex = -1; // Index of the currently viewed image in the lightbox.
+    let hasMorePages = true;      // Flag to determine if a "Next" page exists.
+    let isLoading = false;        // Prevents multiple simultaneous API calls.
+    let showTooltipTimer, hideTooltipTimer; // Timers for managing tooltip hover intent.
+    let isTooltipModeEnabled = localStorage.getItem(TOOLTIP_MODE_KEY) === 'true';
 
     // --- 4. CORE FUNCTIONS ---
 
@@ -94,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} [pageToLoad=1] - The page number to fetch and display.
      */
     async function loadPage(pageToLoad = 1) {
+        hideTooltip();
         if (isLoading) return;
         isLoading = true;
         
@@ -101,11 +110,9 @@ document.addEventListener('DOMContentLoaded', () => {
         currentImages = [];
         currentPage = pageToLoad;
         
-        // Update the browser's URL to reflect the current page and query.
         const newUrl = `/gallery?q=${encodeURIComponent(query)}&page=${currentPage}`;
         window.history.pushState({ page: currentPage, query: query }, '', newUrl);
 
-        // If a search query is active, save it to the recent searches history.
         if (query) {
             addRecentSearch(query);
         }
@@ -131,6 +138,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Generates the HTML for a set of color-coded, clickable tag pills.
+     * @param {Array<Object>} tags - An array of tag objects [{name, category}].
+     * @returns {string} The HTML string for the tag pills.
+     */
+    function renderTagPills(tags) {
+        if (!tags || tags.length === 0) {
+            return '<span>No tags</span>';
+        }
+        return tags.map(tag => {
+            const categoryClass = getTagCategoryClass(tag.category);
+            const rawTagName = tag.category === 'general' ? tag.name : `${tag.category}:${tag.name}`;
+            const searchLink = `/gallery?q=${encodeURIComponent(rawTagName)}`;
+            return `<a href="${searchLink}" class="tag-pill ${categoryClass}">${tag.name}</a>`;
+        }).join('');
+    }
+
+    /**
      * Renders the grid of image thumbnails into the gallery container.
      * @param {Array<Object>} images - An array of image objects from the API.
      */
@@ -145,8 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const thumb = document.createElement('div');
             thumb.className = 'thumb';
             thumb.dataset.index = index;
-            // The `loading="lazy"` attribute improves performance by only loading images as they scroll into view.
-            thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy"><div class="tags">${img.tags.join(', ') || 'No tags'}</div>`;
+            thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy">`;
             thumb.addEventListener('click', () => openLightbox(index));
             galleryGrid.appendChild(thumb);
         });
@@ -177,10 +200,10 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {number} index - The index of the image to show from the `currentImages` array.
      */
     function openLightbox(index) {
+        hideTooltip();
         currentImageIndex = index;
         showImageInLightbox(currentImageIndex);
         lightboxModal.style.display = 'flex';
-        // Prevent the main page from scrolling while the lightbox is open.
         document.body.style.overflow = 'hidden';
     }
 
@@ -204,17 +227,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const editButton = `<a href="/image/${image.id}" class="action-button">Edit Tags</a>`;
         const deleteButton = `<button id="delete-btn" class="action-button danger" data-image-id="${image.id}">Delete</button>`;
+        const tagsHTML = `<div class="tag-pills-container">${renderTagPills(image.tags)}</div>`;
 
         lightboxInfo.innerHTML = `
             <h4>Image ID: ${image.id}</h4>
-            <p>Tags: ${image.tags.join(', ') || 'No tags'}</p>
+            <div>${tagsHTML}</div>
             <div class="lightbox-actions">
                 ${editButton}
                 ${deleteButton}
             </div>
         `;
-
-        // Add event listener to the new delete button
         document.getElementById('delete-btn').addEventListener('click', handleDelete);
     }
 
@@ -224,19 +246,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleDelete(event) {
         const imageId = event.target.dataset.imageId;
         if (!imageId) return;
-
         const confirmed = await showConfirmation('Are you sure you want to permanently delete this image? This cannot be undone.');
         if (!confirmed) return;
-
         try {
-            const response = await fetch(`/api/image/${imageId}`, {
-                method: 'DELETE',
-            });
-
+            const response = await fetch(`/api/image/${imageId}`, { method: 'DELETE' });
             if (response.ok) {
                 showToast('Image deleted successfully.', 'success');
                 closeLightbox();
-                loadPage(currentPage); // Reload the gallery
+                loadPage(currentPage);
             } else {
                 const result = await response.json();
                 showToast(result.detail || 'Failed to delete image.', 'error');
@@ -253,13 +270,11 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function navigateLightbox(direction) {
         const newIndex = currentImageIndex + direction;
-
         if (newIndex >= 0 && newIndex < currentImages.length) {
             currentImageIndex = newIndex;
             showImageInLightbox(currentImageIndex);
             return;
         }
-
         if (newIndex >= currentImages.length && hasMorePages) {
             await loadNextPageInLightbox();
         } else if (newIndex < 0 && currentPage > 1) {
@@ -275,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxLoadingIndicator.style.display = 'block';
         await loadPage(currentPage + 1);
         lightboxLoadingIndicator.style.display = 'none';
-        openLightbox(0); // Open the first image of the newly loaded page.
+        openLightbox(0);
     }
 
     /**
@@ -286,13 +301,13 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxLoadingIndicator.style.display = 'block';
         await loadPage(currentPage - 1);
         lightboxLoadingIndicator.style.display = 'none';
-        openLightbox(currentImages.length - 1); // Open the last image of the newly loaded page.
+        openLightbox(currentImages.length - 1);
     }
 
-    // --- 6. MISC UI FUNCTIONS ---
+    // --- 6. MISC UI & TOOLTIP FUNCTIONS ---
 
     /**
-     * Sets the CSS variable for thumbnail width and saves the preference.
+     * Sets the CSS variable for thumbnail width and saves the preference to localStorage.
      * @param {string} size - The width in pixels (e.g., "250").
      */
     function applyThumbSize(size) {
@@ -302,10 +317,52 @@ document.addEventListener('DOMContentLoaded', () => {
         thumbnailControls.querySelector(`[data-size="${size}"]`)?.classList.add('active');
     }
 
+    /**
+     * Hides the dynamic tooltip and clears any pending timers.
+     */
+    function hideTooltip() {
+        clearTimeout(showTooltipTimer);
+        clearTimeout(hideTooltipTimer);
+        tagTooltip.classList.remove('visible');
+    }
+
+    /**
+     * Calculates the optimal position for the tooltip and displays it.
+     * @param {HTMLElement} thumb - The thumbnail element being hovered.
+     * @param {MouseEvent} event - The mouse event that triggered the display.
+     */
+    function showTooltip(thumb, event) {
+        const index = parseInt(thumb.dataset.index, 10);
+        const image = currentImages[index];
+        if (!image || !image.tags) return;
+
+        tagTooltip.innerHTML = renderTagPills(image.tags);
+        
+        // Use a temporary class to calculate dimensions without a visual flicker.
+        tagTooltip.classList.add('visible-calculating');
+        const tooltipRect = tagTooltip.getBoundingClientRect();
+        tagTooltip.classList.remove('visible-calculating');
+
+        let left = event.clientX + 15;
+        let top = event.clientY + 15;
+
+        // Smartly adjust position to prevent overflowing the viewport.
+        if (left + tooltipRect.width > window.innerWidth) {
+            left = event.clientX - tooltipRect.width - 15;
+        }
+        if (top + tooltipRect.height > window.innerHeight) {
+            top = event.clientY - tooltipRect.height - 15;
+        }
+
+        tagTooltip.style.left = `${left}px`;
+        tagTooltip.style.top = `${top}px`;
+        tagTooltip.classList.add('visible');
+    }
+
     // --- 7. EVENT HANDLERS ---
 
     /**
-     * Handles all global keydown events for navigation shortcuts.
+     * Handles all global keydown events for navigation and feature toggles.
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
@@ -313,49 +370,85 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.matches('input, textarea')) return;
 
         if (lightboxModal.style.display === 'flex') {
+            // Lightbox-specific shortcuts
             if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') navigateLightbox(1);
             else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') navigateLightbox(-1);
             else if (e.key === 'Escape') closeLightbox();
         } else {
-            // Gallery page navigation
+            // Gallery-specific shortcuts
             if ((e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') && hasMorePages) {
                 loadPage(currentPage + 1);
             } else if ((e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') && currentPage > 1) {
                 loadPage(currentPage - 1);
+            } else if (e.key.toLowerCase() === 't') {
+                isTooltipModeEnabled = !isTooltipModeEnabled;
+                localStorage.setItem(TOOLTIP_MODE_KEY, isTooltipModeEnabled);
+                const message = `Tooltip mode ${isTooltipModeEnabled ? 'enabled' : 'disabled'}.`;
+                showToast(message, 'info');
+                if (!isTooltipModeEnabled) {
+                    hideTooltip();
+                }
             }
         }
     }
+
+    /**
+     * Sets up the event listeners for the dynamic tooltip.
+     */
+    function setupTooltipEvents() {
+        galleryGrid.addEventListener('mouseover', e => {
+            if (!isTooltipModeEnabled) return;
+            const thumb = e.target.closest('.thumb');
+            if (thumb) {
+                clearTimeout(hideTooltipTimer);
+                showTooltipTimer = setTimeout(() => showTooltip(thumb, e), TOOLTIP_SHOW_DELAY);
+            }
+        });
+
+        galleryGrid.addEventListener('mouseout', e => {
+            if (!isTooltipModeEnabled) return;
+            const thumb = e.target.closest('.thumb');
+            if (thumb) {
+                clearTimeout(showTooltipTimer);
+                hideTooltipTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY);
+            }
+        });
+        
+        tagTooltip.addEventListener('mouseover', () => {
+            if (!isTooltipModeEnabled) return;
+            clearTimeout(hideTooltipTimer);
+        });
+
+        tagTooltip.addEventListener('mouseout', () => {
+            if (!isTooltipModeEnabled) return;
+            hideTooltipTimer = setTimeout(hideTooltip, TOOLTIP_HIDE_DELAY);
+        });
+    }
     
     /**
-     * Sets up the application by attaching event listeners and loading initial data.
+     * Sets up all initial event listeners for the page.
      */
     function initialize() {
-        // Set thumbnail size from localStorage or use the default.
+        // Initial setup calls
         const savedSize = localStorage.getItem('thumbSize') || DEFAULT_THUMB_SIZE;
         applyThumbSize(savedSize);
-        
-        // Only show the "Batch Actions" link if there's an active search.
-        if (query) {
-            batchEditLink.style.display = 'inline-block';
-        }
+        if (query) { batchEditLink.style.display = 'inline-block'; }
 
-        // Attach all event listeners.
+        // Attach event listeners
         lightboxClose.addEventListener('click', closeLightbox);
         lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
         lightboxNext.addEventListener('click', () => navigateLightbox(1));
         document.addEventListener('keydown', handleKeydown);
         thumbnailControls.addEventListener('click', (e) => {
-            if (e.target.dataset.size) {
-                applyThumbSize(e.target.dataset.size);
-            }
+            if (e.target.dataset.size) { applyThumbSize(e.target.dataset.size); }
         });
-        // Handle browser back/forward buttons.
         window.addEventListener('popstate', (e) => {
             const newPage = e.state?.page || 1;
             if (newPage !== currentPage) loadPage(newPage);
         });
 
-        // Set up the autocomplete for the main search bar.
+        // Set up modular components
+        setupTooltipEvents();
         setupTagAutocomplete(tagInput, suggestionsBox, { showSavedSearches: true });
         
         // Kick off the initial page load.

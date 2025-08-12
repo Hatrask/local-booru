@@ -76,8 +76,8 @@
 		}
 
 		/**
-		 * The central function that applies the current filter and sort settings
-		 * to the master tag list and calls the render function.
+		 * Applies the current filter and sort settings to the master tag list
+		 * and calls the render function.
 		 */
 		function applyFiltersAndRender() {
 			let tagsToRender = [...allTags];
@@ -91,7 +91,8 @@
 			}
 
 			if (currentSort === 'name') {
-				tagsToRender.sort((a, b) => a.name.localeCompare(b.name));
+				// Sort by category first, then by name for logical grouping.
+				tagsToRender.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
 			} else { // currentSort === 'count'
 				tagsToRender.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 			}
@@ -131,10 +132,15 @@
 				const li = document.createElement('li');
 				li.className = 'tag-item';
 				li.id = `tag-item-${tag.id}`;
+                const categoryClass = getTagCategoryClass(tag.category);
+                const fullTagName = tag.category === 'general' ? tag.name : `${tag.category}:${tag.name}`;
+                const categoryOptions = VALID_CATEGORIES.map(c => `<option value="${c}" ${c === tag.category ? 'selected' : ''}>${c}</option>`).join('');
+
 				li.innerHTML = `
 					<div class="tag-display">
 						<div>
-							<a href="/gallery?q=${encodeURIComponent(tag.name)}" class="tag-name-link">${tag.name}</a>
+                            <span class="tag-pill ${categoryClass}" style="cursor: default; margin-right: 0.5rem;">${tag.category}</span>
+							<a href="/gallery?q=${encodeURIComponent(fullTagName)}" class="tag-name-link">${tag.name}</a>
 							<span class="tag-count">(${tag.count})</span>
 						</div>
 						<div class="tag-controls">
@@ -146,6 +152,11 @@
 						<div class="edit-action-group">
 							<input type="text" value="${tag.name}" id="rename-input-${tag.id}" placeholder="New name...">
 							<button class="rename-btn action-button" data-tag-id="${tag.id}">Rename</button>
+						</div>
+                        <div class="edit-action-group">
+							<span>Change category to:</span>
+							<select id="category-select-${tag.id}">${categoryOptions}</select>
+							<button class="change-category-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Save Category</button>
 						</div>
 						<span>or</span>
 						<div class="edit-action-group merge-group">
@@ -176,9 +187,9 @@
 			if (!isNowHidden) {
 				const mergeInput = document.getElementById(`merge-input-${tagId}`);
 				const suggestionsBox = document.getElementById(`suggestions-merge-${tagId}`);
-				// This setup provides a custom `onSelect` callback to populate the hidden data attribute.
 				setupTagAutocomplete(mergeInput, suggestionsBox, { onSelect: (selectedTag) => {
-					const tagObject = allTags.find(t => t.name === selectedTag);
+                    const parsed = parseTag(selectedTag);
+					const tagObject = allTags.find(t => t.name === parsed.name && t.category === parsed.category);
 					if (tagObject) {
 						mergeInput.value = selectedTag;
 						mergeInput.dataset.tagIdToKeep = tagObject.id;
@@ -211,23 +222,46 @@
 				});
 				const result = await response.json();
 				if (!response.ok) throw new Error(result.detail);
-
 				showToast(result.message, 'success');
-				const tagToUpdate = allTags.find(t => t.id == tagId);
-				if (tagToUpdate) tagToUpdate.name = newName;
-				
-				applyFiltersAndRender();
+                await fetchAndInitialize();
 			} catch (err) {
 				showToast(`Rename failed: ${err.message}`, 'error');
 			} finally {
-                toggleEditForm(tagId); // Always close the form after an attempt.
+                toggleEditForm(tagId);
             }
 		}
+
+        /**
+         * Handles the API call to change a tag's category.
+         * @param {string} tagId - The ID of the tag to change.
+         * @param {string} tagName - The name of the tag for the confirmation dialog.
+         */
+        async function handleChangeCategory(tagId, tagName) {
+            const newCategory = document.getElementById(`category-select-${tagId}`).value;
+            const confirmed = await showConfirmation(`Change category of "${tagName}" to "${newCategory}"?`);
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/tags/change_category/${tagId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_category: newCategory })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.detail);
+                showToast(result.message, 'success');
+                await fetchAndInitialize();
+            } catch (err) {
+                showToast(`Category change failed: ${err.message}`, 'error');
+            } finally {
+                toggleEditForm(tagId);
+            }
+        }
 
 		/**
 		 * Handles the API call to merge two tags.
 		 * @param {string} tagIdToDelete - The ID of the tag that will be merged and deleted.
-		 * @param {string} tagNameToDelete - The name of the tag to be deleted (for confirmation dialog).
+		 * @param {string} tagNameToDelete - The name of the tag for the confirmation dialog.
 		 */
 		async function handleMerge(tagIdToDelete, tagNameToDelete) {
 			const mergeInput = document.getElementById(`merge-input-${tagIdToDelete}`);
@@ -250,27 +284,19 @@
 				const response = await fetch('/api/tags/merge', { method: 'POST', body: formData });
 				const result = await response.json();
 				if (!response.ok) throw new Error(result.detail);
-				
 				showToast(result.message, 'success');
-				// Update counts and remove the old tag from the local state for an instant UI update.
-				const tagToDelete = allTags.find(t => t.id == tagIdToDelete);
-				const tagToKeep = allTags.find(t => t.id == tagIdToKeep);
-				if (tagToDelete && tagToKeep) {
-					tagToKeep.count += tagToDelete.count;
-				}
-				allTags = allTags.filter(t => t.id != tagIdToDelete);
-
-				applyFiltersAndRender();
+                await fetchAndInitialize();
 			} catch (err) {
 				showToast(`Merge failed: ${err.message}`, 'error');
-				toggleEditForm(tagIdToDelete);
-			}
+			} finally {
+                toggleEditForm(tagIdToDelete);
+            }
 		}
 		
 		/**
 		 * Handles the API call to permanently delete a tag from the database.
 		 * @param {string} tagId - The ID of the tag to delete.
-		 * @param {string} tagName - The name of the tag to delete (for confirmation dialog).
+		 * @param {string} tagName - The name of the tag for the confirmation dialog.
 		 */
 		async function handleForceDelete(tagId, tagName) {
 			const confirmed = await showConfirmation(`PERMANENTLY DELETE the tag "${tagName}"? This cannot be undone.`);
@@ -280,11 +306,8 @@
 				const response = await fetch(`/api/tags/force_delete/${tagId}`, { method: 'POST' });
 				const result = await response.json();
 				if (!response.ok) throw new Error(result.detail);
-
 				showToast(result.message, 'success');
-				// Remove the tag from local state for an instant UI update.
-				allTags = allTags.filter(t => t.id != tagId);
-				applyFiltersAndRender();
+                await fetchAndInitialize();
 			} catch (err) {
 				showToast(`Deletion failed: ${err.message}`, 'error');
 			}
@@ -318,11 +341,16 @@
 			tagListElem.addEventListener('click', (e) => {
 				const target = e.target;
 				const tagId = target.dataset.tagId;
+                const isActionButton = target.matches('.action-button');
+                
+                // Only prevent default for actual buttons, not links.
+				if (isActionButton) {
+                    e.preventDefault();
+                }
 
 				if (!tagId) return;
 
 				if (target.matches('.edit-btn') || target.matches('.cancel-btn')) {
-					e.preventDefault();
 					toggleEditForm(tagId);
 				} else if (target.matches('.rename-btn')) {
 					handleRename(tagId);
@@ -330,7 +358,9 @@
 					handleMerge(tagId, target.dataset.tagName);
 				} else if (target.matches('.force-delete-btn')) {
 					handleForceDelete(tagId, target.dataset.tagName);
-				}
+				} else if (target.matches('.change-category-btn')) {
+                    handleChangeCategory(tagId, target.dataset.tagName);
+                }
 			});
 		}
 		
