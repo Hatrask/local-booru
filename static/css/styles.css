@@ -417,6 +417,16 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .edit-mode #lightbox-image-container {
     width: calc(100% - 351px); /* 350px for sidebar + 1px for its border */
 }
+/* In edit mode, disable the navigation buttons and hide the view-mode info overlay. */
+.edit-mode .lightbox-nav button {
+    pointer-events: none;
+    opacity: 0.2;
+    cursor: default;
+}
+.edit-mode #lightbox-view-mode-content {
+    display: none;
+}
+
 
 /* --- View Mode Info Overlay Styling --- */
 #lightbox-view-mode-content {
