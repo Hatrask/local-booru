@@ -40,26 +40,27 @@
     <div id="lightbox-modal">
         <span id="lightbox-close">×</span>
         <div id="lightbox-content" class="view-mode">
-            <!-- Image container will be dynamically populated -->
+            
+            <!-- A SINGLE, CORRECT container for the image, nav, and overlay -->
             <div id="lightbox-image-container">
                  <img id="lightbox-image" src="" alt="Lightbox image">
                  <div class="lightbox-nav">
                     <button id="lightbox-prev" title="Previous (A)">❮</button>
                     <button id="lightbox-next" title="Next (D)">❯</button>
                 </div>
-            </div>
-           
-            <!-- Sidebar for info and editing -->
-            <div id="lightbox-sidebar">
+                <!-- The view-mode content is now an overlay INSIDE the image container -->
                 <div id="lightbox-view-mode-content">
                     <h4 id="lightbox-image-id"></h4>
-                    <div id="lightbox-tags-display" class="tag-pills-container"></div>
+                    <div class="tag-pills-container"></div>
                     <div class="lightbox-actions">
                          <button id="lightbox-edit-btn" class="action-button">Edit Tags</button>
                          <button id="lightbox-delete-btn" class="action-button danger">Delete</button>
                     </div>
                 </div>
-
+            </div>
+           
+            <!-- Sidebar is now ONLY for editing -->
+            <div id="lightbox-sidebar">
                 <div id="lightbox-edit-mode-content">
                     <!-- This container now uses the shared style -->
                     <div id="lightbox-tag-editor-container" class="tag-panel-container">
@@ -125,14 +126,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxLoadingIndicator = document.getElementById('lightbox-loading-indicator');
     
     // Lightbox state-specific elements
-    const lightboxImageId = document.getElementById('lightbox-image-id');
-    const lightboxTagsDisplay = document.getElementById('lightbox-tags-display');
-    const lightboxEditBtn = document.getElementById('lightbox-edit-btn');
-    const lightboxDeleteBtn = document.getElementById('lightbox-delete-btn');
+    // Note: lightboxTagsDisplay is now inside lightbox-view-mode-content
+    const lightboxViewModeContent = document.getElementById('lightbox-view-mode-content');
+    const lightboxImageId = lightboxViewModeContent.querySelector('#lightbox-image-id');
+    const lightboxTagsDisplay = lightboxViewModeContent.querySelector('.tag-pills-container');
+    const lightboxEditBtn = lightboxViewModeContent.querySelector('#lightbox-edit-btn');
+    const lightboxDeleteBtn = lightboxViewModeContent.querySelector('#lightbox-delete-btn');
+    
     const lightboxSaveBtn = document.getElementById('lightbox-save-btn');
     const lightboxCancelBtn = document.getElementById('lightbox-cancel-btn');
     const lightboxTagInput = document.getElementById('lightbox-tag-input');
-    const lightboxSuggestions = document.getElementById('lightbox-suggestions');
     const lightboxTagEditorPills = document.getElementById('lightbox-tag-editor-pills');
 
     // Tag Helper Elements
@@ -664,7 +667,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     lightboxEditStateTags.add(tagValue);
                     updateEditorPills();
                     e.target.value = '';
-                    lightboxSuggestions.style.display = 'none';
                     showRecentsInHelper();
                 }
             }
