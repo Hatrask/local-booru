@@ -1,4 +1,4 @@
-import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile
+import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile, tempfile
 from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
@@ -623,22 +623,16 @@ def api_change_tag_category(tag_id: int, request: ChangeCategoryRequest, db: Ses
     return {"message": f"Category for tag '{tag_to_change.name}' changed from '{original_category}' to '{new_category}'."}
 
 @app.get("/api/export_collection")
-def api_export_collection(db: Session = Depends(get_db)):
+async def api_export_collection(db: Session = Depends(get_db)):
     """
-    Creates and streams a zip archive of the entire collection.
-    
-    The archive contains a metadata.json file with all image-tag associations
-    and an `images/` folder with all physical media. This version uses the ORM
-    for more robust data fetching.
+    Creates and streams a zip archive of the entire collection using a temporary
+    file on disk. This is memory-efficient and allows the browser to show
+    download progress.
     """
-    zip_buffer = io.BytesIO()
-
-    # Use the ORM to fetch all images, eagerly loading their tags to prevent N+1 queries.
     all_images = db.query(Image).options(orm.selectinload(Image.tags)).order_by(Image.id).all()
     
     images_metadata = []
     for image in all_images:
-        # Format tags with their category prefix for a complete export.
         tags_list = []
         for tag in sorted(image.tags, key=lambda t: (t.category, t.name)):
             if tag.category == 'general':
@@ -658,8 +652,13 @@ def api_export_collection(db: Session = Depends(get_db)):
         "images": images_metadata
     }
 
+    # Create a temporary file on disk to build the zip archive.
+    # delete=False is crucial so we can control its lifecycle.
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    
     try:
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Build the zip file on disk, not in memory.
+        with zipfile.ZipFile(temp_file, 'w', zipfile.ZIP_STORED) as zipf:
             zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
             
             images_dir = "media/images"
@@ -668,17 +667,37 @@ def api_export_collection(db: Session = Depends(get_db)):
                 archive_path = os.path.join("images", image_meta["filename"])
                 if os.path.exists(source_path):
                     zipf.write(source_path, archive_path)
-
-    except (IOError, Exception) as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create zip archive: {e}")
-
-    zip_buffer.seek(0)
     
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"}
-    )
+        # The temporary file is now complete. Get its size for the Content-Length header.
+        file_size = temp_file.tell()
+        temp_file.seek(0) # Rewind to the beginning for streaming.
+
+        headers = {
+            'Content-Length': str(file_size),
+            'Content-Disposition': f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"
+        }
+
+        # This generator function reads the file and ensures it gets deleted.
+        def file_iterator(file_path):
+            with open(file_path, 'rb') as f:
+                while chunk := f.read(8192): # Read in 8KB chunks
+                    yield chunk
+            # The key cleanup step: delete the temp file after streaming is done.
+            os.unlink(file_path)
+        
+        return StreamingResponse(
+            file_iterator(temp_file.name),
+            media_type="application/zip",
+            headers=headers
+        )
+
+    except Exception as e:
+        # If anything fails, make sure we clean up the temp file.
+        os.unlink(temp_file.name)
+        raise HTTPException(status_code=500, detail=f"Failed to create zip archive: {e}")
+    finally:
+        # This ensures the file handle is closed.
+        temp_file.close()
 
 @app.post("/api/factory_reset")
 def api_schedule_factory_reset():
