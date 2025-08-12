@@ -212,31 +212,31 @@ def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
 def index(request: Request, db: Session = Depends(get_db)):
     image_count = db.query(Image).count()
     latest_version = app.version
-    return templates.TemplateResponse("index.html", {"request": request, "image_count": image_count, "latest_version": latest_version})
+    return templates.TemplateResponse("index.html", {"request": request, "image_count": image_count, "latest_version": latest_version, "active_page": "home"})
 
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(request: Request):
-    return templates.TemplateResponse("upload.html", {"request": request})
+    return templates.TemplateResponse("upload.html", {"request": request, "active_page": "upload"})
 
 @app.get("/gallery", response_class=HTMLResponse)
 def gallery(request: Request, q: Optional[str] = Query(None)):
-    return templates.TemplateResponse("gallery.html", {"request": request, "query": q or ""})
+    return templates.TemplateResponse("gallery.html", {"request": request, "query": q or "", "active_page": "gallery"})
 
 @app.get("/batch_actions", response_class=HTMLResponse)
 def batch_actions(request: Request, q: Optional[str] = Query(None)):
-    return templates.TemplateResponse("batch_actions.html", {"request": request, "query": q or ""})
+    return templates.TemplateResponse("batch_actions.html", {"request": request, "query": q or "", "active_page": "batch_actions"})
 
 @app.get("/tag_manager", response_class=HTMLResponse)
 def tag_manager_page(request: Request):
-    return templates.TemplateResponse("tag_manager.html", {"request": request})
+    return templates.TemplateResponse("tag_manager.html", {"request": request, "active_page": "tag_manager"})
 
 @app.get("/help", response_class=HTMLResponse)
 def help_page(request: Request):
-    return templates.TemplateResponse("help.html", {"request": request})
+    return templates.TemplateResponse("help.html", {"request": request, "active_page": "help"})
 
 @app.get("/saved_searches", response_class=HTMLResponse)
 def saved_searches_page(request: Request):
-    return templates.TemplateResponse("saved_searches.html", {"request": request})
+    return templates.TemplateResponse("saved_searches.html", {"request": request, "active_page": "saved_searches"})
 
 # --- API Endpoints ---
 

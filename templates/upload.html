@@ -6,8 +6,9 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
+    {% include '_header.html' %}
+
     <div class="upload-form-container">
-        <h1>Upload Images</h1>
         <form id="uploadForm" class="upload-form" action="/upload" method="post" enctype="multipart/form-data" autocomplete="off">
             <!-- Hidden inputs to handle file and folder selection separately -->
             <input type="file" id="file-input" multiple style="display: none;" />
@@ -51,7 +52,6 @@
         </form>
 
         <div id="upload-status"></div>
-        <a href="/" class="action-button">Back to Home</a>
     </div>
 
     <script src="/static/js/autocomplete.js"></script>

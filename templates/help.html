@@ -5,225 +5,220 @@
     <title>Help - local-booru</title>
     <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
-<body class="help-page">
-    <h1>Help & User Guide</h1>
-    <p>Welcome to local-booru! This guide explains how to use all the features of the site.</p>
+<body>
+    {% include '_header.html' %}
 
-    <!-- Table of Contents -->
-    <div class="toc">
-        <strong>Table of Contents</strong>
+    <div class="help-page">
+        <h2>Help & User Guide</h2>
+        <p>Welcome to local-booru! This guide explains how to use all the features of the site.</p>
+
+        <!-- Table of Contents -->
+        <div class="toc">
+            <strong>Table of Contents</strong>
+            <ul>
+                <li><a href="#uploading">1. Uploading Images</a></li>
+                <li><a href="#gallery">2. The Gallery & Searching</a></li>
+                <li><a href="#categories">3. The Tag Category System</a></li>
+                <li><a href="#advanced">4. Advanced Management</a></li>
+                <li><a href="#cli">5. Command-Line Utilities</a></li>
+                <li><a href="#shortcuts">6. Keyboard Shortcuts</a></li>
+            </ul>
+        </div>
+
+        <!-- Section 1: Uploading -->
+        <h3 id="uploading">1. Uploading Images</h3>
+        <p>
+            The first step is to add images to your collection. Navigate to the <strong><a href="/upload">Upload</a></strong> page to get started.
+        </p>
         <ul>
-            <li><a href="#uploading">1. Uploading Images</a></li>
-            <li><a href="#gallery">2. The Gallery & Searching</a></li>
-            <li><a href="#categories">3. The Tag Category System</a></li>
-            <li><a href="#advanced">4. Advanced Management</a></li>
-            <li><a href="#cli">5. Command-Line Utilities</a></li>
-            <li><a href="#shortcuts">6. Keyboard Shortcuts</a></li>
+            <li>
+                <strong>Selecting Files:</strong> You can select or drag & drop multiple image files and folders at once. A small preview of each selected image will appear.
+            </li>
+            <li>
+                <strong>Initial Tagging:</strong> Before you upload, you can add tags in the "Tags (comma-separated)" box. Every image in the batch will receive these initial tags. You can also add categorized tags here (see the section on the category system).
+            </li>
+            <li>
+                <strong>Uploading:</strong> Click the "Upload" button. The system automatically detects and skips any images you've already uploaded based on their content hash.
+            </li>
+        </ul>
+
+        <!-- Section 2: The Gallery & Searching -->
+        <h3 id="gallery">2. The Gallery & Searching</h3>
+        <p>
+            The <strong><a href="/gallery">Gallery</a></strong> is the main page for viewing your collection.
+        </p>
+        <ul>
+            <li>
+                <strong>Masonry Layout:</strong> Images are displayed in a "masonry-style" grid that elegantly handles images of different heights.
+            </li>
+            <li>
+                <strong>Tag Tooltips:</strong> To keep the view clean, tags are hidden by default. Press the <code>T</code> key on your keyboard to toggle a mode where hovering over an image will display its tags in a tooltip. Your preference for this mode is saved in your browser.
+            </li>
+        </ul>
+
+        <h4>The Lightbox Viewer: Viewing and Editing</h4>
+        <p>
+            Clicking any thumbnail opens the powerful lightbox viewer. This is where all viewing and tag editing now takes place. The lightbox has two modes.
+        </p>
+        <ul>
+            <li>
+                <strong>View Mode (Default):</strong> This mode is for browsing. You see a large version of the image, and its tags are displayed in a panel that appears when you hover over the image. You can navigate, delete, or enter edit mode from here.
+            </li>
+            <li>
+                <strong>Edit Mode:</strong> Pressing the <code>E</code> key or clicking "Edit Tags" switches to this mode. The image panel shrinks, and a sidebar appears listing current and recent tags used.
+                <ul>
+                    <li>The <strong>Current tags</strong> shows what's applied to the image and has an input field to pick or create new tags.</li>
+                    <li>The <strong>Recent tags</strong> helps you find tags with a list of the most recently used ones. If you start typing in the input field, this panel will show live search results from your tag database.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h4>Using the Search Bar</h4>
+        <p>The search bar is the most powerful tool for finding specific images. Here’s how to use its syntax.</p>
+        
+        <h5>Basic Search (AND Logic)</h5>
+        <p>
+            Tags are separated by commas (<code>,</code>). This finds images that have <strong>all</strong> of the specified tags.
+        </p>
+        <ul class="example-list">
+            <li><code>cat, dog</code> - Finds images tagged with both <code>cat</code> AND <code>dog</code>.</li>
+            <li><code>artist:someartist, character:somechar</code> - Finds images with a specific artist AND a specific character.</li>
+        </ul>
+        
+        <h5>Advanced Operators</h5>
+        <ul>
+            <li>
+                <strong>OR Logic:</strong> Use parentheses with a vertical bar (<code>|</code>).
+                <ul class="example-list">
+                    <li><code>(cat|dog)</code> - Finds images with either the <code>cat</code> OR <code>dog</code> tag.</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Exclusion (NOT):</strong> To exclude images with a certain tag, prefix it with a hyphen (<code>-</code>).
+                <ul class="example-list">
+                    <li><code>-dog</code> - Finds all images that do NOT have the <code>dog</code> tag.</li>
+                    <li><code>-character:reimu_hakurei</code> - Finds all images that are NOT of that character.</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h5>Wildcard Search</h5>
+        <p>
+            Use an asterisk (<code>*</code>) as a wildcard to match parts of a tag name.
+        </p>
+        <ul class="example-list">
+            <li><code>cat*</code> - Finds tags starting with "cat," like <code>caterpillar</code> or <code>catgirl</code>.</li>
+            <li><code>artist:h*</code> - Finds artists starting with "h".</li>
+        </ul>
+
+        <h5>Special Queries</h5>
+        <ul class="example-list">
+            <li><code>untagged</code> - A special keyword to find all images that have no tags assigned to them.</li>
+        </ul>
+
+        <!-- Section 3: Tag Categories -->
+        <h3 id="categories">3. The Tag Category System</h3>
+        <p>
+            To allow for more powerful organization, all tags belong to a category. This helps distinguish between different types of information, such as the artist of an image versus the subject matter. Tags are color-coded by their category for easy identification.
+        </p>
+        <h4>The Five Categories</h4>
+        <ul>
+            <li><code class="tag-pill tag-general">general</code>: For standard descriptive tags (e.g., <code>1girl</code>, <code>smile</code>, <code>outdoors</code>). This is the default category if none is specified.</li>
+            <li><code class="tag-pill tag-artist">artist</code>: For the creator of the artwork.</li>
+            <li><code class="tag-pill tag-character">character</code>: For named characters depicted in the image.</li>
+            <li><code class="tag-pill tag-copyright">copyright</code>: For the series, franchise, or game the content is from.</li>
+            <li><code class="tag-pill tag-metadata">metadata</code>: For technical details or user-specific information (e.g., <code>highres</code>, <code>comic</code>, <code>to_sort</code>).</li>
+        </ul>
+
+        <h4>How to Use Categories</h4>
+        <p>
+            You use categories by adding a prefix to your tag, followed by a colon (<code>:</code>). If you do not provide a prefix, the tag will automatically be assigned to the `general` category.
+        </p>
+        <ul class="example-list">
+            <li>Adding tags: <code>artist:someartist, character:somechar, 1girl, smile</code></li>
+            <li>Searching: <code>artist:someartist, -character:anotherchar</code></li>
+        </ul>
+
+        <!-- Section 4: Advanced Management -->
+        <h3 id="advanced">4. Advanced Management</h3>
+        <p>For power users, the Batch Actions and Tag Manager pages provide tools for large-scale organization.</p>
+        
+        <h4>Batch Actions</h4>
+        <p>The <strong><a href="/batch_actions">Batch Actions</a></strong> page allows you to edit or delete many images at once.</p>
+        <ol>
+            <li>1. Use the search bar to find the set of images you want to work on.</li>
+            <li>2. Select images by clicking on them. Your selection is saved as you navigate between pages.</li>
+            <li>3. Use the form at the bottom to choose an action (<strong>Add, Remove, Replace, or Delete</strong>) and specify tags if needed.</li>
+            <li>4. Click "Apply Action" to modify all selected images. <strong>Be careful with "Delete Images," as this is permanent!</strong></li>
+            <li>5. You can undo the last tag edit (add/remove/replace) with the "Undo Last Tag Edit" button. This does not work for deletions.</li>
+        </ol>
+
+        <h4>Tag Manager</h4>
+        <p>The <strong><a href="/tag_manager">Tag Manager</a></strong> is for cleaning up the tags themselves, not the images.</p>
+        <ul>
+            <li><strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).</li>
+            <li><strong>Change Category:</strong> Changes a tag's category. For example, you can move an incorrectly categorized tag from `general` to `artist`.</li>
+            <li><strong>Merge:</strong> Combines two tags into one. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).</li>
+            <li><strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong></li>
+        </ul>
+        
+        <!-- Section 5: Command-Line Utilities -->
+        <h3 id="cli">5. Command-Line Utilities</h3>
+        <p>
+            Some maintenance tasks are performed using scripts from the command line, not the web interface. You must have terminal access to the server where the application is running to use these tools.
+        </p>
+
+        <h4>Exporting Your Collection</h4>
+        <p>
+            You can create a complete backup of your collection in a single `.zip` file. This is perfect for backups or migrating your collection to another system without losing any data.
+        </p>
+        <ol>
+            <li>Navigate to the application's root directory in your terminal.</li>
+            <li>Run the script using the command: <code>python export_collection.py</code></li>
+            <li>A file named <code>booru_export.zip</code> will be created, containing all images and a `metadata.json` file with all tag information.</li>
+        </ol>
+        
+        <div class="danger-zone">
+            <h4>Danger Zone: Factory Reset</h4>
+            <p>
+                If you want to completely wipe all data and start over, you can use the provided command-line script. This is a highly destructive and irreversible action that will delete all images, tags, and the entire database.
+            </p>
+            <h5>How to perform a factory reset:</h5>
+            <ol>
+                <li>1. <strong>Stop the application server.</strong> This is critical to ensure the database file is not locked.</li>
+                <li>2. Navigate to the application's root directory in your terminal.</li>
+                <li>3. Run the script using the command: <code>python reset_app.py</code></li>
+                <li>4. The script will ask for a final confirmation. You must type <code>reset my booru</code> to proceed.</li>
+                <li>5. Once the script is finished, you can restart the application server. It will be in a clean, factory-new state.</li>
+            </ol>
+        </div>
+
+        <!-- Section 6: Keyboard Shortcuts -->
+        <h3 id="shortcuts">6. Keyboard Shortcuts</h3>
+        <p>You can navigate the site quickly using your keyboard.</p>
+        
+        <h4>In the Gallery</h4>
+        <ul>
+            <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
+            <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
+            <li><code>T</code>: Toggle the tag tooltip display mode on and off.</li>
+        </ul>
+
+        <h4>In the Lightbox (View Mode)</h4>
+        <ul>
+            <li><code>A</code> or <code>ArrowLeft</code>: View the previous image.</li>
+            <li><code>D</code> or <code>ArrowRight</code>: View the next image.</li>
+            <li><code>E</code>: Enter Edit Mode.</li>
+            <li><code>Shift + D</code>: Delete the current image (a confirmation will appear).</li>
+            <li><code>Escape</code>: Close the lightbox.</li>
+        </ul>
+        
+        <h4>In the Lightbox (Edit Mode)</h4>
+        <ul>
+            <li><code>S</code>: Save your tag changes.</li>
+            <li><code>C</code>: Clear the text in the tag input field.</li>
+            <li><code>Escape</code>: Cancel your changes and return to View Mode.</li>
         </ul>
     </div>
-
-    <!-- Section 1: Uploading -->
-    <h2 id="uploading">1. Uploading Images</h2>
-    <p>
-        The first step is to add images to your collection. Navigate to the <strong><a href="/upload">Upload</a></strong> page to get started.
-    </p>
-    <ul>
-        <li>
-            <strong>Selecting Files:</strong> You can select or drag & drop multiple image files and folders at once. A small preview of each selected image will appear.
-        </li>
-        <li>
-            <strong>Initial Tagging:</strong> Before you upload, you can add tags in the "Tags (comma-separated)" box. Every image in the batch will receive these initial tags. You can also add categorized tags here (see the section on the category system).
-        </li>
-        <li>
-            <strong>Uploading:</strong> Click the "Upload" button. The system automatically detects and skips any images you've already uploaded based on their content hash.
-        </li>
-    </ul>
-
-    <!-- Section 2: The Gallery & Searching -->
-    <h2 id="gallery">2. The Gallery & Searching</h2>
-    <p>
-        The <strong><a href="/gallery">Gallery</a></strong> is the main page for viewing your collection.
-    </p>
-    <ul>
-        <li>
-            <strong>Masonry Layout:</strong> Images are displayed in a "masonry-style" grid that elegantly handles images of different heights.
-        </li>
-        <li>
-            <strong>Tag Tooltips:</strong> To keep the view clean, tags are hidden by default. Press the <code>T</code> key on your keyboard to toggle a mode where hovering over an image will display its tags in a tooltip. Your preference for this mode is saved in your browser.
-        </li>
-    </ul>
-
-    <h3>The Lightbox Viewer: Viewing and Editing</h3>
-    <p>
-        Clicking any thumbnail opens the powerful lightbox viewer. This is where all viewing and tag editing now takes place. The lightbox has two modes.
-    </p>
-    <ul>
-        <li>
-            <strong>View Mode (Default):</strong> This mode is for browsing. You see a large version of the image, and its tags are displayed in a panel that appears when you hover over the image. You can navigate, delete, or enter edit mode from here.
-        </li>
-        <li>
-            <strong>Edit Mode:</strong> Pressing the <code>E</code> key or clicking "Edit Tags" switches to this mode. The image panel shrinks, and a sidebar appears listing current and recent tags used.
-            <ul>
-                <li>The <strong>Current tags</strong> shows what's applied to the image and has an input field to pick or create new tags.</li>
-                <li>The <strong>Recent tags</strong> helps you find tags with a list of the most recently used ones. If you start typing in the input field, this panel will show live search results from your tag database.</li>
-            </ul>
-        </li>
-    </ul>
-
-    <h3>Using the Search Bar</h3>
-    <p>The search bar is the most powerful tool for finding specific images. Here’s how to use its syntax.</p>
-    
-    <h4>Basic Search (AND Logic)</h4>
-	<p>
-		Tags are separated by commas (<code>,</code>). This finds images that have <strong>all</strong> of the specified tags.
-	</p>
-    <ul class="example-list">
-        <li><code>cat, dog</code> - Finds images tagged with both <code>cat</code> AND <code>dog</code>.</li>
-		<li><code>artist:someartist, character:somechar</code> - Finds images with a specific artist AND a specific character.</li>
-    </ul>
-    
-    <h4>Advanced Operators</h4>
-    <ul>
-        <li>
-            <strong>OR Logic:</strong> Use parentheses with a vertical bar (<code>|</code>).
-            <ul class="example-list">
-                <li><code>(cat|dog)</code> - Finds images with either the <code>cat</code> OR <code>dog</code> tag.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Exclusion (NOT):</strong> To exclude images with a certain tag, prefix it with a hyphen (<code>-</code>).
-            <ul class="example-list">
-                <li><code>-dog</code> - Finds all images that do NOT have the <code>dog</code> tag.</li>
-                <li><code>-character:reimu_hakurei</code> - Finds all images that are NOT of that character.</li>
-            </ul>
-        </li>
-    </ul>
-
-    <h4>Wildcard Search</h4>
-    <p>
-        Use an asterisk (<code>*</code>) as a wildcard to match parts of a tag name.
-    </p>
-    <ul class="example-list">
-        <li><code>cat*</code> - Finds tags starting with "cat," like <code>caterpillar</code> or <code>catgirl</code>.</li>
-        <li><code>artist:h*</code> - Finds artists starting with "h".</li>
-    </ul>
-
-    <h4>Special Queries</h4>
-    <ul class="example-list">
-        <li><code>untagged</code> - A special keyword to find all images that have no tags assigned to them.</li>
-    </ul>
-
-    <!-- Section 3: Tag Categories -->
-    <h2 id="categories">3. The Tag Category System</h2>
-    <p>
-        To allow for more powerful organization, all tags belong to a category. This helps distinguish between different types of information, such as the artist of an image versus the subject matter. Tags are color-coded by their category for easy identification.
-    </p>
-    <h4>The Five Categories</h4>
-    <ul>
-        <li><code class="tag-pill tag-general">general</code>: For standard descriptive tags (e.g., <code>1girl</code>, <code>smile</code>, <code>outdoors</code>). This is the default category if none is specified.</li>
-        <li><code class="tag-pill tag-artist">artist</code>: For the creator of the artwork.</li>
-        <li><code class="tag-pill tag-character">character</code>: For named characters depicted in the image.</li>
-        <li><code class="tag-pill tag-copyright">copyright</code>: For the series, franchise, or game the content is from.</li>
-        <li><code class="tag-pill tag-metadata">metadata</code>: For technical details or user-specific information (e.g., <code>highres</code>, <code>comic</code>, <code>to_sort</code>).</li>
-    </ul>
-
-    <h4>How to Use Categories</h4>
-    <p>
-        You use categories by adding a prefix to your tag, followed by a colon (<code>:</code>). If you do not provide a prefix, the tag will automatically be assigned to the `general` category.
-    </p>
-    <ul class="example-list">
-        <li>Adding tags: <code>artist:someartist, character:somechar, 1girl, smile</code></li>
-        <li>Searching: <code>artist:someartist, -character:anotherchar</code></li>
-    </ul>
-
-    <!-- Section 4: Advanced Management -->
-    <h2 id="advanced">4. Advanced Management</h2>
-    <p>For power users, the Batch Actions and Tag Manager pages provide tools for large-scale organization.</p>
-    
-    <h3>Batch Actions</h3>
-    <p>The <strong><a href="/batch_actions">Batch Actions</a></strong> page allows you to edit or delete many images at once.</p>
-    <ol>
-        <li>1. Use the search bar to find the set of images you want to work on.</li>
-        <li>2. Select images by clicking on them. Your selection is saved as you navigate between pages.</li>
-        <li>3. Use the form at the bottom to choose an action (<strong>Add, Remove, Replace, or Delete</strong>) and specify tags if needed.</li>
-        <li>4. Click "Apply Action" to modify all selected images. <strong>Be careful with "Delete Images," as this is permanent!</strong></li>
-        <li>5. You can undo the last tag edit (add/remove/replace) with the "Undo Last Tag Edit" button. This does not work for deletions.</li>
-    </ol>
-
-    <h3>Tag Manager</h3>
-    <p>The <strong><a href="/tag_manager">Tag Manager</a></strong> is for cleaning up the tags themselves, not the images.</p>
-    <ul>
-        <li><strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).</li>
-        <li><strong>Change Category:</strong> Changes a tag's category. For example, you can move an incorrectly categorized tag from `general` to `artist`.</li>
-        <li><strong>Merge:</strong> Combines two tags into one. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).</li>
-        <li><strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong></li>
-    </ul>
-    
-    <!-- Section 5: Command-Line Utilities -->
-    <h2 id="cli">5. Command-Line Utilities</h2>
-    <p>
-        Some maintenance tasks are performed using scripts from the command line, not the web interface. You must have terminal access to the server where the application is running to use these tools.
-    </p>
-
-    <h3>Exporting Your Collection</h3>
-    <p>
-        You can create a complete backup of your collection in a single `.zip` file. This is perfect for backups or migrating your collection to another system without losing any data.
-    </p>
-    <ol>
-        <li>Navigate to the application's root directory in your terminal.</li>
-        <li>Run the script using the command: <code>python export_collection.py</code></li>
-        <li>A file named <code>booru_export.zip</code> will be created, containing all images and a `metadata.json` file with all tag information.</li>
-    </ol>
-    
-    <div class="danger-zone">
-        <h3>Danger Zone: Factory Reset</h3>
-        <p>
-            If you want to completely wipe all data and start over, you can use the provided command-line script. This is a highly destructive and irreversible action that will delete all images, tags, and the entire database.
-        </p>
-        <h4>How to perform a factory reset:</h4>
-        <ol>
-            <li>1. <strong>Stop the application server.</strong> This is critical to ensure the database file is not locked.</li>
-            <li>2. Navigate to the application's root directory in your terminal.</li>
-            <li>3. Run the script using the command: <code>python reset_app.py</code></li>
-            <li>4. The script will ask for a final confirmation. You must type <code>reset my booru</code> to proceed.</li>
-            <li>5. Once the script is finished, you can restart the application server. It will be in a clean, factory-new state.</li>
-        </ol>
-    </div>
-
-    <!-- Section 6: Keyboard Shortcuts -->
-    <h2 id="shortcuts">6. Keyboard Shortcuts</h2>
-    <p>You can navigate the site quickly using your keyboard.</p>
-    
-    <h4>In the Gallery</h4>
-    <ul>
-        <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
-        <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
-        <li><code>T</code>: Toggle the tag tooltip display mode on and off.</li>
-    </ul>
-
-    <h4>In the Lightbox (View Mode)</h4>
-    <ul>
-        <li><code>A</code> or <code>ArrowLeft</code>: View the previous image.</li>
-        <li><code>D</code> or <code>ArrowRight</code>: View the next image.</li>
-        <li><code>E</code>: Enter Edit Mode.</li>
-        <li><code>Shift + D</code>: Delete the current image (a confirmation will appear).</li>
-        <li><code>Escape</code>: Close the lightbox.</li>
-    </ul>
-    
-    <h4>In the Lightbox (Edit Mode)</h4>
-    <ul>
-        <li><code>S</code>: Save your tag changes.</li>
-        <li><code>C</code>: Clear the text in the tag input field.</li>
-        <li><code>Escape</code>: Cancel your changes and return to View Mode.</li>
-    </ul>
-
-    <nav>
-        <a href="/">Home</a>
-        <a href="/upload">Upload</a>
-        <a href="/gallery">Gallery</a>
-        <a href="/batch_actions">Batch Actions</a>
-        <a href="/tag_manager">Tag Manager</a>
-        <a href="/saved_searches">Saved Searches</a>
-    </nav>
 </body>
 </html>

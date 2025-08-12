@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="/static/css/styles.css" />
 </head>
 <body>
-    <h1>Batch Actions</h1>
+    {% include '_header.html' %}
 
     <form class="search-form" action="/batch_actions" method="get" autocomplete="off">
         <div class="autocomplete-container">
@@ -22,10 +22,6 @@
         </div>
         <button type="submit">Search</button>
     </form>
-
-    <div class="page-actions">
-        <a href="/gallery?q={{ query }}" class="action-button batch-action-button">Back to Gallery</a>
-    </div>
 
     <div id="selection-controls">
         <button type="button" id="selectAllBtn">Select All on Page</button>

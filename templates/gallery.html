@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-    <h1>Gallery</h1>
+    {% include '_header.html' %}
 
     <form class="search-form" action="/gallery" method="get" autocomplete="off">
         <div class="autocomplete-container">
@@ -22,11 +22,6 @@
         </div>
         <button type="submit">Search</button>
     </form>
-
-    <div class="search-actions">
-        <a href="/" class="action-button">Back to Home</a>
-        <a id="batchEditLink" class="action-button" href="/batch_actions?q={{ query }}">Batch Actions</a>
-    </div>
 
     <div id="thumbnail-controls">
         <button data-size="250">Small</button>
@@ -107,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled';
     const AUTOCOMPLETE_LIMIT = 25; // Increased limit for the main tag input
     const VALID_CATEGORIES = ["general", "artist", "character", "copyright", "metadata"];
-
 
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');

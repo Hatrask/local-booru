@@ -6,20 +6,9 @@
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
+    {% include '_header.html' %}
+
     <div class="index-page-container">
-		<header>
-			<h1>local-booru</h1>
-
-			<nav>
-				<a href="/upload">Upload</a>
-				<a href="/gallery">Gallery</a>
-				<a href="/batch_actions">Batch Actions</a>
-				<a href="/tag_manager">Tag Manager</a>
-				<a href="/saved_searches">Saved Searches</a>
-				<a href="/help">Help</a>
-			</nav>
-		</header>
-
         <form class="search-form-index" action="/gallery" method="get">
             <div class="autocomplete-container">
                 <input
