@@ -820,7 +820,7 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .help-page { max-width: 900px; margin: auto; text-align: left; }
 .help-page li { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; padding: 1rem; border-radius: var(--border-radius); line-height: 1.5; }
 .help-page ul, .help-page ol { list-style-type: none; padding: 0; }
-.help-page h2, h3 { border-bottom: 1px solid var(--color-border); }
+.help-page h2, .help-page h3 { border-bottom: 1px solid var(--color-border); }
 .help-page h3 { padding-bottom: 0.5rem; }
 
 .toc {
