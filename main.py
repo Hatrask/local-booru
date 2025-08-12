@@ -1,10 +1,11 @@
 # Updated main.py
 import shutil, os, uuid, json, hashlib, sqlite3
+from datetime import datetime
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict
@@ -76,6 +77,8 @@ class Tag(Base):
     name = Column(String, nullable=False)
     # Tags are now categorized, with 'general' as the default.
     category = Column(String, nullable=False, default='general', server_default='general')
+    # This timestamp tracks when a tag was last assigned to an image.
+    last_used_at = Column(DateTime, default=datetime.utcnow, server_default=func.now(), nullable=False)
     images = relationship("Image", secondary=tags_table, back_populates="tags")
     # A tag is now defined by the unique combination of its name and category.
     __table_args__ = (UniqueConstraint('name', 'category', name='_name_category_uc'),)
@@ -92,7 +95,8 @@ class Tag(Base):
 #
 def run_migration():
     """
-    Applies necessary database schema changes for tag categories.
+    Applies necessary database schema changes for tag categories and timestamps.
+    This version is compatible with older SQLite versions.
     """
     try:
         conn = sqlite3.connect(DATABASE_URL.replace("sqlite:///", ""))
@@ -104,6 +108,17 @@ def run_migration():
         if 'category' not in columns:
             print("INFO:     Database migration: Adding 'category' column to 'tags' table.")
             cursor.execute("ALTER TABLE tags ADD COLUMN category VARCHAR NOT NULL DEFAULT 'general'")
+            conn.commit()
+            print("INFO:     Migration successful.")
+        
+        if 'last_used_at' not in columns:
+            print("INFO:     Database migration: Adding 'last_used_at' column to 'tags' table.")
+            # Step 1: Add the column, allowing NULLs temporarily to avoid default value errors.
+            cursor.execute("ALTER TABLE tags ADD COLUMN last_used_at DATETIME")
+            conn.commit()
+            # Step 2: Back-fill the timestamp for all existing rows.
+            print("INFO:     Database migration: Populating 'last_used_at' for existing tags.")
+            cursor.execute("UPDATE tags SET last_used_at = CURRENT_TIMESTAMP")
             conn.commit()
             print("INFO:     Migration successful.")
 
@@ -149,7 +164,8 @@ def calculate_sha256(file_like_object) -> str:
 def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
     """
     Parses raw tag strings (e.g., 'artist:name', 'tag_name'), groups them by
-    category, and efficiently retrieves or creates them in the database.
+    category, efficiently retrieves or creates them, and updates their
+    'last_used_at' timestamp.
     """
     tags_to_process = []
     if not raw_tag_inputs:
@@ -181,8 +197,13 @@ def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
                 db.add(new_tag)
                 tags_to_process.append(new_tag)
     
-    # Flush the session to ensure new tags are assigned an ID before being associated.
+    # Flush the session to ensure new tags are assigned an ID.
     db.flush()
+
+    # "Touch" all processed tags to update their usage timestamp.
+    now = datetime.utcnow()
+    for tag in tags_to_process:
+        tag.last_used_at = now
             
     return tags_to_process
 
@@ -347,9 +368,9 @@ def api_get_images(
 @app.get("/api/tags/recent")
 def api_get_recent_tags(limit: int = Query(25, ge=1, le=100), db: Session = Depends(get_db)):
     """
-    Returns the most recently created tags, which is useful for the Tag Helper UI.
+    Returns the most recently USED tags, which is useful for the Tag Helper UI.
     """
-    recent_tags = db.query(Tag).order_by(desc(Tag.id)).limit(limit).all()
+    recent_tags = db.query(Tag).order_by(desc(Tag.last_used_at)).limit(limit).all()
     results = []
     for tag in recent_tags:
         if tag.category == 'general':
@@ -556,7 +577,7 @@ def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends
     
     # Check for uniqueness within the same category.
     if db.query(Tag).filter(Tag.name == new_name_clean, Tag.category == tag_to_rename.category).first():
-        raise HTTPException(status_code=400, detail=f"A tag named '{new_name_clean}' already exists in the '{tag_to_rename.category}' category.")
+        raise HTTPException(status_code=400, detail=f"A tag named '{new_name_clean}' already. exists in the '{tag_to_rename.category}' category.")
     
     tag_to_rename.name = new_name_clean
     db.commit()
@@ -576,6 +597,9 @@ def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form
     for image in tag_to_delete.images:
         if tag_to_keep not in image.tags:
             image.tags.append(tag_to_keep)
+
+    # After merging, the kept tag has been "used", so update its timestamp.
+    tag_to_keep.last_used_at = datetime.utcnow()
     
     tag_to_delete.images.clear()
     db.delete(tag_to_delete)
