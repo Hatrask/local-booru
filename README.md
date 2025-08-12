@@ -7,19 +7,16 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
 
 ## Features
 
-*   **Duplicate-Aware Uploads:** Upload multiple images at once. The system calculates a SHA256 hash for each file and automatically ignores any duplicates, ensuring a clean media library.
-*   **Categorized Tagging:** Go beyond simple tags with a structured category system (`general`, `artist`, `character`, `copyright`, `metadata`). Tags are color-coded for instant recognition, and you can search with prefixes (e.g., `artist:name`) for more precise filtering.
-*   **Comprehensive Search:** A search bar with a dedicated query syntax supports finding images by a combination of tags. Includes support for:
-    *   `AND` logic (`tag1, tag2`)
-    *   `OR` logic (`(tag1 | tag2)`)
-    *   `NOT` logic (`-tag3`)
-    *   `Wildcard` matching (`art*`)
-    *   A special `untagged` keyword.
-*   **Saved Searches:** Automatically remembers your recent search queries for quick recall. "Pin" your most-used or complex searches for permanent, prioritized access. A dedicated management page allows you to view, pin, and delete all saved queries.
-*   **Gallery & Viewer:** A paginated, masonry-style thumbnail grid for browsing the collection. Includes a full-screen lightbox viewer and an on-demand tag tooltip system (toggle with `T`).
-*   **Batch Actions:** A dedicated page for modifying large sets of images at once. Selections are persistent across pages, allowing you to add, remove, or replace tags, or to permanently delete images in bulk.
-*   **Persistent Undo:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after restarting the application.
-*   **Tag Management:** A dedicated page for database-level tag maintenance. Rename, merge, delete, or change the category of any tag.
+*   **Duplicate File Prevention:** Calculates the SHA256 hash of each uploaded file to prevent adding duplicate images to your library.
+*   **Categorized Tagging:** Organizes tags into five distinct categories (`general`, `artist`, `character`, `copyright`, `metadata`). Tags are color-coded in the UI for quick identification.
+*   **Tag-Based Search Syntax:** Find images using a dedicated query language that supports `AND`, `OR`, `NOT`, and `wildcard (*)` logic, along with a special `untagged` keyword.
+*   **Saved & Recent Searches:** Automatically keeps a list of your recent queries. You can "pin" your most important searches for permanent access from the search bar.
+*   **Image Gallery with Integrated Editor:** Browse your collection in a masonry-style grid. Clicking an image opens a two-state lightbox:
+    *   **View Mode:** Navigate between images, view tags, and use keyboard shortcuts for browsing.
+    *   **Edit Mode:** Switch to a side-panel view to edit an image's tags directly in the lightbox, with access to a helper panel for finding recent or existing tags.
+*   **Batch Tagging & Deletion:** A dedicated page for performing actions on multiple images at once. Selections persist across pages, and you can add, remove, replace, or delete tags in bulk.
+*   **Undo for Batch Operations:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after an application restart.
+*   **Tag Maintenance Tools:** A dedicated page for database-level tag operations, including renaming, merging, deleting, and changing the category of any tag.
 
 ## Getting Started
 
@@ -71,7 +68,7 @@ Follow these steps to get `local-booru` running on your local machine.
 1.  **Upload:** Go to the "Upload" page to add your first images. You can add categorized tags directly on upload (e.g., `artist:someartist, character:somechar, tag1`).
 2.  **Browse:** Navigate to the "Gallery" to see your collection. Press `T` to toggle the tag tooltips on and off.
 3.  **Search:** Use the search bar to filter images. You can now search by category (e.g., `character:reimu_hakurei`).
-4.  **Edit or Delete:** Click any image to open the lightbox viewer. From there, click "Edit Tags" to go to the image's dedicated page, or "Delete" to remove it.
+4.  **View & Edit:** Click any image to open it in the lightbox. In **View Mode**, you can navigate between images. Press `E` to switch to **Edit Mode**, where a sidebar appears, allowing you to modify the image's tags. Press `S` to save your changes or `Esc` to cancel and return to view mode.
 5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization, including changing tag categories.
 6.  **Manage Searches:** Visit the "Saved Searches" page to organize your pinned and recent search queries.
 
