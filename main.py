@@ -71,7 +71,7 @@ check_and_perform_reset() # Factory reset call
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
-    version="1.8.0",
+    version="1.9.0",
 )
 
 # --- Static File and Template Configuration ---
