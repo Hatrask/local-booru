@@ -180,7 +180,10 @@ def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
                 new_tag = Tag(name=name, category=category)
                 db.add(new_tag)
                 tags_to_process.append(new_tag)
-                
+    
+    # Flush the session to ensure new tags are assigned an ID before being associated.
+    db.flush()
+            
     return tags_to_process
 
 # --- Frontend Page Routes ---

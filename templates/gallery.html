@@ -43,6 +43,10 @@
             <!-- Image container will be dynamically populated -->
             <div id="lightbox-image-container">
                  <img id="lightbox-image" src="" alt="Lightbox image">
+                 <div class="lightbox-nav">
+                    <button id="lightbox-prev" title="Previous (A)">❮</button>
+                    <button id="lightbox-next" title="Next (D)">❯</button>
+                </div>
             </div>
            
             <!-- Sidebar for info and editing -->
@@ -74,10 +78,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-         <div class="lightbox-nav">
-            <button id="lightbox-prev" title="Previous (A)">❮</button>
-            <button id="lightbox-next" title="Next (D)">❯</button>
         </div>
         <p id="lightbox-loading-indicator" style="display: none;">Loading...</p>
     </div>
@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const image = currentImages[index];
         if (!image || !image.tags) return;
 
-        tagTooltip.innerHTML = renderTagPills(image.tags);
+        tagTooltip.innerHTML = renderTagPills(image.tags, false);
         
         // Use a temporary class to calculate dimensions without a visual flicker.
         tagTooltip.classList.add('visible-calculating');
@@ -575,6 +575,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pill) {
                     lightboxEditStateTags.delete(pill.dataset.tag);
                     updateEditorPills();
+                }
+            }
+        });
+        
+        lightboxTagInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission
+                const tagValue = e.target.value.trim().toLowerCase();
+                if (tagValue) {
+                    lightboxEditStateTags.add(tagValue);
+                    updateEditorPills();
+                    e.target.value = '';
+                    // Hide suggestions manually if autocomplete is open
+                    const suggestionsEl = e.target.nextElementSibling;
+                    if (suggestionsEl && suggestionsEl.classList.contains('suggestions')) {
+                        suggestionsEl.style.display = 'none';
+                    }
                 }
             }
         });
