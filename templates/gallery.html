@@ -681,6 +681,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // General event listeners
         lightboxClose.addEventListener('click', closeLightbox);
+        lightboxModal.addEventListener('click', (e) => {
+            // If the user clicks on the dark backdrop of the modal, close it.
+            if (e.target === lightboxModal) {
+                closeLightbox();
+            }
+        });
         lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
         lightboxNext.addEventListener('click', () => navigateLightbox(1));
         document.addEventListener('keydown', handleKeydown);
