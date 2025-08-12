@@ -51,11 +51,22 @@
         <li>
             <strong>Tag Tooltips:</strong> To keep the view clean, tags are hidden by default. Press the <code>T</code> key on your keyboard to toggle a mode where hovering over an image will display its tags in a tooltip. Your preference for this mode is saved in your browser.
         </li>
+    </ul>
+
+    <h3>The Lightbox Viewer: Viewing and Editing</h3>
+    <p>
+        Clicking any thumbnail opens the powerful lightbox viewer. This is where all viewing and tag editing now takes place. The lightbox has two modes.
+    </p>
+    <ul>
         <li>
-            <strong>Lightbox Viewer:</strong> Clicking on any thumbnail opens a full-size image viewer. You can navigate between images using the arrow buttons or your keyboard.
+            <strong>View Mode (Default):</strong> This mode is for browsing. You see a large version of the image, and its tags are displayed in a panel that appears when you hover over the image. You can navigate, delete, or enter edit mode from here.
         </li>
         <li>
-            <strong>Editing or Deleting:</strong> Inside the lightbox, click the "Edit Tags" button to go to a dedicated page to modify them, or "Delete" to remove the image permanently.
+            <strong>Edit Mode:</strong> Pressing the <code>E</code> key or clicking "Edit Tags" switches to this mode. The image panel shrinks, and a sidebar appears listing current and recent tags used.
+            <ul>
+                <li>The <strong>Current tags</strong> shows what's applied to the image and has an input field to pick or create new tags.</li>
+                <li>The <strong>Recent tags</strong> helps you find tags with a list of the most recently used ones. If you start typing in the input field, this panel will show live search results from your tag database.</li>
+            </ul>
         </li>
     </ul>
 
@@ -182,23 +193,28 @@
     <!-- Section 6: Keyboard Shortcuts -->
     <h2 id="shortcuts">6. Keyboard Shortcuts</h2>
     <p>You can navigate the site quickly using your keyboard.</p>
+    
+    <h4>In the Gallery</h4>
     <ul>
-        <li>
-            <strong>Gallery Page:</strong>
-            <ul>
-                <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
-                <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
-                <li><code>T</code>: Toggle the tag tooltip display mode on and off.</li>
-            </ul>
-        </li>
-        <li>
-            <strong>Lightbox Viewer:</strong>
-            <ul>
-                <li><code>A</code> or <code>ArrowLeft</code>: View the previous image.</li>
-                <li><code>D</code> or <code>ArrowRight</code>: View the next image.</li>
-                <li><code>Escape</code>: Close the lightbox.</li>
-            </ul>
-        </li>
+        <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
+        <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
+        <li><code>T</code>: Toggle the tag tooltip display mode on and off.</li>
+    </ul>
+
+    <h4>In the Lightbox (View Mode)</h4>
+    <ul>
+        <li><code>A</code> or <code>ArrowLeft</code>: View the previous image.</li>
+        <li><code>D</code> or <code>ArrowRight</code>: View the next image.</li>
+        <li><code>E</code>: Enter Edit Mode.</li>
+        <li><code>Shift + D</code>: Delete the current image (a confirmation will appear).</li>
+        <li><code>Escape</code>: Close the lightbox.</li>
+    </ul>
+    
+    <h4>In the Lightbox (Edit Mode)</h4>
+    <ul>
+        <li><code>S</code>: Save your tag changes.</li>
+        <li><code>C</code>: Clear the text in the tag input field.</li>
+        <li><code>Escape</code>: Cancel your changes and return to View Mode.</li>
     </ul>
 
     <nav>

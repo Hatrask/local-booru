@@ -346,9 +346,9 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     justify-content: center; align-items: center; z-index: 100;
 }
 #lightbox-content { position: relative; max-width: 90%; max-height: 90%; display: flex; flex-direction: column; align-items: center; }
-#lightbox-image { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--border-radius); }
+#lightbox-image { max-width: 100%; max-width: 90vh; max-height: 90vh; object-fit: contain; border-radius: var(--border-radius); }
 #lightbox-close { position: absolute; top: 20px; right: 30px; color: #fff; font-size: 40px; font-weight: bold; cursor: pointer; }
-.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-between; padding: 0 10px; }
+.lightbox-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; display: flex; justify-content: space-between; padding: 0 10px; width: 95%; }
 .lightbox-nav button { background: rgba(0, 0, 0, 0.5); color: #fff; border: none; padding: 15px; cursor: pointer; font-size: 24px; border-radius: 5px; }
 .lightbox-info { color: #fff; text-align: center; background: rgba(0, 0, 0, 0.6); max-width: 80%; padding: 1rem; border-radius: 5px; margin-top: 1rem; }
 .lightbox-info .action-button { background-color: var(--color-accent); border-color: var(--color-accent); margin-top: 1rem; }
@@ -366,6 +366,247 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .action-button.danger { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 .action-button.danger:hover { background-color: #c53030; border-color: #c53030; }
 
+/* --- 3.3.1 Lightbox Overhaul --- */
+#lightbox-content {
+    display: flex;
+    flex-direction: row; /* Main axis is horizontal */
+    max-width: 95%;
+    max-height: 95%;
+    background-color: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+#lightbox-image-container {
+    flex-shrink: 1;
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow: hidden;
+    position: relative;
+    transition: width 0.3s ease-in-out;
+}
+
+#lightbox-sidebar {
+    width: 350px;
+    flex-shrink: 0;
+    background-color: var(--color-bg-secondary);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: width 0.3s ease-in-out;
+    margin-right: 1rem;
+}
+
+/* --- Lightbox Mode Visibility --- */
+/* In view mode, the image container takes full width and the sidebar is gone */
+.view-mode #lightbox-image-container {
+    width: 100%;
+}
+.view-mode #lightbox-sidebar {
+    display: none;
+}
+/* In edit mode, the sidebar appears and the image container makes room for it */
+.edit-mode #lightbox-sidebar {
+    display: flex;
+}
+.edit-mode #lightbox-image-container {
+    width: calc(100% - 351px); /* 350px for sidebar + 1px for its border */
+}
+/* In edit mode, disable the navigation buttons and hide the view-mode info overlay. */
+.edit-mode .lightbox-nav button {
+    pointer-events: none;
+    opacity: 0.2;
+    cursor: default;
+}
+.edit-mode #lightbox-view-mode-content {
+    display: none;
+}
+
+
+/* --- View Mode Info Overlay Styling --- */
+#lightbox-view-mode-content {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    width: 350px;
+    display: flex;
+    flex-direction: column;
+    background: rgba(18, 18, 18, 0.85);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    
+    /* Hover Transition */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+}
+
+/* Show the overlay on hover */
+#lightbox-image-container:hover #lightbox-view-mode-content {
+    opacity: 1;
+    visibility: visible;
+}
+
+#lightbox-view-mode-content h4 {
+    margin-top: 0;
+    flex-shrink: 0;
+}
+
+/* The tag container now expands to push the actions down */
+#lightbox-view-mode-content .tag-pills-container {
+    flex-grow: 1; /* This makes the tag area take up all available vertical space */
+    overflow-y: auto; /* Adds a scrollbar if tags overflow */
+    min-height: 0; /* Prevents flexbox overflow bugs */
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+/* The container for the buttons */
+#lightbox-view-mode-content .lightbox-actions {
+    flex-shrink: 0; /* Prevents this area from shrinking */
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end; /* This aligns the buttons to the right */
+    margin-top: auto; /* THIS IS THE CRITICAL LINE: Pushes the element to the bottom */
+}
+
+/* Keep edit mode content working as expected */
+#lightbox-edit-mode-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+/* Dynamic Tag Helper & Editor Shared Styles */
+.tag-panel-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+}
+
+/* Specific layout for each panel */
+#lightbox-tag-editor-container {
+    flex-shrink: 0; /* Prevents it from shrinking */
+    margin-bottom: 1rem;
+}
+#lightbox-tag-helper {
+    flex-grow: 1; /* Allows it to take up remaining space */
+}
+
+.tag-panel-title {
+    flex-shrink: 0;
+    padding: 0.5rem 0.8rem;
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg-tertiary);
+    border-bottom: 1px solid var(--color-border);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.tag-panel-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 0.8rem;
+    display: flex;
+    flex-direction: column; /* Better layout for the editor */
+    gap: 6px;
+    align-content: flex-start;
+}
+#tag-helper-content-area {
+    flex-direction: row; /* Override for the cloud layout */
+    flex-wrap: wrap;
+}
+#tag-helper-content-area p { 
+    width: 100%; 
+    text-align: center; 
+    color: var(--color-text-secondary);
+}
+
+#lightbox-tag-editor-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-content: flex-start;
+}
+#lightbox-tag-editor-pills .tag-pill {
+    display: flex;
+    align-items: center;
+}
+.remove-tag-btn {
+    background: none; border: none; color: white;
+    font-size: 1.1em; font-weight: bold; margin-left: 0.5rem;
+    padding: 0 0.2rem; cursor: pointer; opacity: 0.7;
+    line-height: 1;
+}
+.remove-tag-btn:hover { opacity: 1; }
+#lightbox-tag-input {
+    width: 100%;
+    padding: 0.5rem;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin-top: 0.5rem;
+}
+#lightbox-edit-mode-content .lightbox-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 1rem;
+    padding-top: 1rem; /* Add some space above buttons */
+}
+#lightbox-edit-mode-content .action-button {
+    flex-grow: 1;
+}
+
+/* General Lightbox Cleanup */
+#lightbox-close { z-index: 101; }
+
+/* REVISED LIGHTBOX NAVIGATION STYLES */
+.lightbox-nav {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 95%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none; /* Allow clicks to pass through the container */
+}
+
+.lightbox-nav button {
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    border: none;
+    padding: 15px;
+    cursor: pointer;
+    font-size: 24px;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto; /* Make buttons clickable */
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.lightbox-nav button:hover {
+    opacity: 1;
+}
 
 /* --- 3.4 Image Detail Page --- */
 .detail-page-container { max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; }
