@@ -26,7 +26,7 @@ class UpdateTagsRequest(BaseModel):
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
-    version="1.7.1",
+    version="1.8.0",
 )
 
 # --- Constants ---
