@@ -614,9 +614,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // --- In EDIT MODE ---
             else if (lightboxContent.classList.contains('edit-mode')) {
-                if (e.key.toLowerCase() === 's' && document.activeElement !== lightboxTagInput) {
-                    e.preventDefault();
-                    lightboxSaveBtn.click();
+                // Do not trigger shortcuts if the user is focused on the tag input field.
+                if (document.activeElement === lightboxTagInput) {
+                    return;
+                }
+
+                switch (e.key.toLowerCase()) {
+                    case 's':
+                        e.preventDefault();
+                        lightboxSaveBtn.click();
+                        break;
+                    case 'c':
+                        e.preventDefault();
+                        lightboxTagInput.value = '';
+                        clearTimeout(searchDebounceTimer);
+                        showRecentsInHelper();
+                        break;
                 }
             }
         }
