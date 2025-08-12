@@ -96,7 +96,7 @@
 <script src="/static/js/notifications.js"></script>
 <script src="/static/js/autocomplete.js"></script>
 
-<script>
+<script>{% raw %}
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. CONFIGURATION & CONSTANTS ---
@@ -106,6 +106,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOOLTIP_HIDE_DELAY = 50;
     const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled';
     const AUTOCOMPLETE_LIMIT = 25; // Increased limit for the main tag input
+    const VALID_CATEGORIES = ["general", "artist", "character", "copyright", "metadata"];
+
 
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
@@ -158,6 +160,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchDebounceTimer;
 
     // --- 4. CORE FUNCTIONS ---
+
+    /**
+     * Parses a raw tag string (e.g., "artist:name") into a structured object.
+     * This is robust enough to handle colons in the tag name itself.
+     * @param {string} rawTagName - The raw string to parse.
+     * @returns {{name: string, category: string}}
+     */
+    function parseRawTagName(rawTagName) {
+        const parts = rawTagName.split(':');
+        const potentialCategory = parts[0];
+        
+        if (parts.length > 1 && VALID_CATEGORIES.includes(potentialCategory)) {
+            // A valid category prefix was found.
+            return {
+                category: potentialCategory,
+                name: parts.slice(1).join(':') // Re-join the rest in case name has colons.
+            };
+        } else {
+            // No valid prefix, so the whole string is a general tag.
+            return {
+                category: 'general',
+                name: rawTagName
+            };
+        }
+    }
 
     /**
      * Fetches image data from the API and orchestrates the rendering of the page.
@@ -333,13 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxTagEditorPills.innerHTML = '';
         const sortedTags = Array.from(lightboxEditStateTags).sort();
         sortedTags.forEach(rawTagName => {
-            let name, category;
-            if (rawTagName.includes(':')) {
-                [category, name] = rawTagName.split(':', 2);
-            } else {
-                category = 'general';
-                name = rawTagName;
-            }
+            const { name, category } = parseRawTagName(rawTagName);
             const categoryClass = getTagCategoryClass(category);
             const pill = document.createElement('span');
             pill.className = `tag-pill ${categoryClass}`;
@@ -448,13 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tags.forEach(rawTagName => {
-            let name, category;
-            if (rawTagName.includes(':')) {
-                [category, name] = rawTagName.split(':', 2);
-            } else {
-                category = 'general';
-                name = rawTagName;
-            }
+            const { name, category } = parseRawTagName(rawTagName);
             const pill = document.createElement('a');
             pill.href = '#';
             pill.className = `tag-pill ${getTagCategoryClass(category)}`;
@@ -700,6 +715,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // START THE APPLICATION
     initialize();
 });
-</script>
+{% endraw %}</script>
 </body>
 </html>
