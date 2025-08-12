@@ -7,16 +7,18 @@
 </head>
 <body>
     <div class="index-page-container">
-        <h1>local-booru</h1>
+		<header>
+			<h1>local-booru</h1>
 
-		<nav>
-			<a href="/upload">Upload</a>
-			<a href="/gallery">Gallery</a>
-			<a href="/batch_actions">Batch Actions</a>
-			<a href="/tag_manager">Tag Manager</a>
-			<a href="/saved_searches">Saved Searches</a>
-			<a href="/help">Help</a>
-		</nav>
+			<nav>
+				<a href="/upload">Upload</a>
+				<a href="/gallery">Gallery</a>
+				<a href="/batch_actions">Batch Actions</a>
+				<a href="/tag_manager">Tag Manager</a>
+				<a href="/saved_searches">Saved Searches</a>
+				<a href="/help">Help</a>
+			</nav>
+		</header>
 
         <form class="search-form-index" action="/gallery" method="get">
             <div class="autocomplete-container">
@@ -33,9 +35,11 @@
             <button type="submit">Search</button>
         </form>
 
-        <div id="image-counter" class="image-counter"></div>
-		<!-- Counter girls drawn by Kusaka Kokage -->
-        <p>Serving {{ image_count }} images. local-booru {{ latest_version }}</p>
+		<footer>
+			<div id="image-counter" class="image-counter"></div>
+			<!-- Counter girls drawn by Kusaka Kokage -->
+			<p>Serving {{ image_count }} images. local-booru {{ latest_version }}</p>
+		</footer>
     </div>
 
     <script src="/static/js/autocomplete.js"></script>
