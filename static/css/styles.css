@@ -920,3 +920,29 @@ input:focus + .toggle-slider {
 input:checked + .toggle-slider:before {
     transform: translateX(22px);
 }
+
+.settings-section.danger-zone {
+    border-color: var(--color-danger);
+}
+
+.settings-section.danger-zone h2 {
+    background-color: var(--color-danger);
+    color: white;
+    border-color: var(--color-danger);
+}
+
+.settings-section.danger-zone .setting-item-description {
+    color: var(--color-text-secondary);
+}
+
+.danger-zone .action-button {
+    background-color: var(--color-danger);
+    border-color: var(--color-danger);
+    color: white;
+    font-weight: bold;
+    padding: 0.6rem 1.2rem;
+}
+
+.danger-zone .action-button:hover {
+    filter: brightness(1.2);
+}

@@ -1,14 +1,68 @@
-# Updated main.py
-import shutil, os, uuid, json, hashlib, sqlite3
-from datetime import datetime
+import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile
+from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict
+
+import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile
+from datetime import datetime, timezone
+from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint, DateTime
+from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional, Dict
+
+# --- Constants ---
+DATABASE_URL = "sqlite:///database.db"
+UNDO_STATE_FILE = "undo_state.json"
+VALID_CATEGORIES = {"general", "artist", "character", "copyright", "metadata"}
+
+# --- Reset Function ---
+def check_and_perform_reset():
+    """
+    Checks for a `.reset_pending` flag file on startup. If found, it performs
+    a factory reset and then removes the flag. This runs before the server starts.
+    """
+    reset_flag_file = ".reset_pending"
+    if not os.path.exists(reset_flag_file):
+        return
+
+    print("INFO:     '.reset_pending' flag found. Performing factory reset...")
+    db_file = DATABASE_URL.replace("sqlite:///", "")
+    images_dir = "media/images"
+
+    items_to_delete = [
+        {"path": db_file, "type": "file"},
+        {"path": UNDO_STATE_FILE, "type": "file"},
+        {"path": images_dir, "type": "directory"},
+    ]
+
+    for item in items_to_delete:
+        path = item["path"]
+        if os.path.exists(path):
+            try:
+                if item["type"] == "file":
+                    os.remove(path)
+                elif item["type"] == "directory":
+                    shutil.rmtree(path)
+                print(f"INFO:     - Deleted {path}")
+            except OSError as e:
+                print(f"ERROR:    Could not delete {path}. Reason: {e}")
+    
+    os.makedirs(images_dir, exist_ok=True)
+    print("INFO:     - Recreated media directory.")
+    
+    os.remove(reset_flag_file)
+    print("INFO:     Factory reset complete. Application will now start normally.")
+
 
 # --- Pydantic Models ---
 from pydantic import BaseModel
@@ -23,16 +77,13 @@ class UpdateTagsRequest(BaseModel):
     tags: List[str] = []
 
 # --- Application Initialization ---
+check_and_perform_reset() # Factory reset call
+
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
     version="1.8.0",
 )
-
-# --- Constants ---
-UNDO_STATE_FILE = "undo_state.json"
-VALID_CATEGORIES = {"general", "artist", "character", "copyright", "metadata"}
-
 
 # --- Static File and Template Configuration ---
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -50,7 +101,7 @@ app.add_middleware(
 )
 
 # --- Database Configuration (SQLite) ---
-DATABASE_URL = "sqlite:///database.db"
+# DATABASE_URL is now defined in the Constants section
 Base = declarative_base()
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -82,63 +133,6 @@ class Tag(Base):
     images = relationship("Image", secondary=tags_table, back_populates="tags")
     # A tag is now defined by the unique combination of its name and category.
     __table_args__ = (UniqueConstraint('name', 'category', name='_name_category_uc'),)
-
-
-# ==============================================================================
-# ONE-TIME DATABASE MIGRATION - TO BE REMOVED IN FUTURE VERSIONS
-# ==============================================================================
-# The following function is designed to upgrade a pre-category schema to the
-# new schema. It is idempotent and safe to run on every startup.
-#
-# FOR FUTURE MAINTENANCE: Once the application is stable, this function and
-# its call below should be removed to reduce code complexity.
-#
-def run_migration():
-    """
-    Applies necessary database schema changes for tag categories and timestamps.
-    This version is compatible with older SQLite versions.
-    """
-    try:
-        conn = sqlite3.connect(DATABASE_URL.replace("sqlite:///", ""))
-        cursor = conn.cursor()
-        
-        cursor.execute("PRAGMA table_info(tags)")
-        columns = {column[1]: column for column in cursor.fetchall()}
-        
-        if 'category' not in columns:
-            print("INFO:     Database migration: Adding 'category' column to 'tags' table.")
-            cursor.execute("ALTER TABLE tags ADD COLUMN category VARCHAR NOT NULL DEFAULT 'general'")
-            conn.commit()
-            print("INFO:     Migration successful.")
-        
-        if 'last_used_at' not in columns:
-            print("INFO:     Database migration: Adding 'last_used_at' column to 'tags' table.")
-            # Step 1: Add the column, allowing NULLs temporarily to avoid default value errors.
-            cursor.execute("ALTER TABLE tags ADD COLUMN last_used_at DATETIME")
-            conn.commit()
-            # Step 2: Back-fill the timestamp for all existing rows.
-            print("INFO:     Database migration: Populating 'last_used_at' for existing tags.")
-            cursor.execute("UPDATE tags SET last_used_at = CURRENT_TIMESTAMP")
-            conn.commit()
-            print("INFO:     Migration successful.")
-
-        # Ensure the composite unique constraint for (name, category) exists.
-        try:
-            cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS _name_category_uc ON tags (name, category)")
-            conn.commit()
-        except sqlite3.OperationalError as e:
-            if "already exists" not in str(e):
-                raise
-
-        conn.close()
-    except Exception as e:
-        print(f"ERROR:    An error occurred during database migration: {e}")
-
-# Run the one-time migration before SQLAlchemy handles table creation.
-run_migration()
-# ==============================================================================
-# END OF MIGRATION CODE
-# ==============================================================================
 
 Base.metadata.create_all(engine)
 
@@ -627,6 +621,78 @@ def api_change_tag_category(tag_id: int, request: ChangeCategoryRequest, db: Ses
     tag_to_change.category = new_category
     db.commit()
     return {"message": f"Category for tag '{tag_to_change.name}' changed from '{original_category}' to '{new_category}'."}
+
+@app.get("/api/export_collection")
+def api_export_collection(db: Session = Depends(get_db)):
+    """
+    Creates and streams a zip archive of the entire collection.
+    
+    The archive contains a metadata.json file with all image-tag associations
+    and an `images/` folder with all physical media. This version uses the ORM
+    for more robust data fetching.
+    """
+    zip_buffer = io.BytesIO()
+
+    # Use the ORM to fetch all images, eagerly loading their tags to prevent N+1 queries.
+    all_images = db.query(Image).options(orm.selectinload(Image.tags)).order_by(Image.id).all()
+    
+    images_metadata = []
+    for image in all_images:
+        # Format tags with their category prefix for a complete export.
+        tags_list = []
+        for tag in sorted(image.tags, key=lambda t: (t.category, t.name)):
+            if tag.category == 'general':
+                tags_list.append(tag.name)
+            else:
+                tags_list.append(f"{tag.category}:{tag.name}")
+        
+        images_metadata.append({
+            "filename": image.filename,
+            "sha256_hash": image.sha256_hash,
+            "tags": tags_list
+        })
+
+    final_metadata = {
+        "app_version": app.version,
+        "export_date": datetime.now(timezone.utc).isoformat(),
+        "images": images_metadata
+    }
+
+    try:
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
+            
+            images_dir = "media/images"
+            for image_meta in images_metadata:
+                source_path = os.path.join(images_dir, image_meta["filename"])
+                archive_path = os.path.join("images", image_meta["filename"])
+                if os.path.exists(source_path):
+                    zipf.write(source_path, archive_path)
+
+    except (IOError, Exception) as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create zip archive: {e}")
+
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"}
+    )
+
+@app.post("/api/factory_reset")
+def api_schedule_factory_reset():
+    """
+    Schedules a factory reset by creating a flag file. The reset will occur
+    the next time the application is started.
+    """
+    try:
+        with open(".reset_pending", "w") as f:
+            f.write("reset")
+    except IOError as e:
+        raise HTTPException(status_code=500, detail=f"Could not schedule reset. Reason: {e}")
+
+    return JSONResponse({"message": "Reset has been scheduled. Please stop and restart the application server to complete the process."})
 
 
 if __name__ == "__main__":

@@ -16,6 +16,9 @@ media/*
 # Undo State File
 undo_state.json
 
+# Reset Pending Marker
+.reset_pending
+
 # IDE / OS specific
 .vscode/
 .idea/

@@ -7,6 +7,7 @@
     {% include '_header.html' %}
 
     <div class="settings-container">
+        <h1>Settings</h1>
 
         <div class="settings-section">
             <h2>Appearance</h2>
@@ -21,26 +22,77 @@
                 </label>
             </div>
         </div>
+
+        <div class="settings-section danger-zone">
+            <h2>Data Management</h2>
+            <div class="setting-item">
+                <div>
+                    <span class="setting-item-label">Export Collection</span>
+                    <p class="setting-item-description">Create a .zip archive of all images and their tags. Ideal for backups.</p>
+                </div>
+                <a href="/api/export_collection" class="action-button" download>Export All</a>
+            </div>
+            <div class="setting-item">
+                <div>
+                    <span class="setting-item-label">Factory Reset</span>
+                    <p class="setting-item-description">Permanently delete all images, tags, and the database. This cannot be undone.</p>
+                </div>
+                <button id="factory-reset-btn" class="action-button">Reset Application</button>
+            </div>
+        </div>
     </div>
 
+    <script src="/static/js/notifications.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Theme Toggle Logic ---
             const themeToggle = document.getElementById('theme-toggle');
-
-            // Set the initial state of the toggle based on the *actual* current theme.
-            // The theme is already applied by the script in the header.
             const currentTheme = document.documentElement.getAttribute('data-theme');
             themeToggle.checked = currentTheme === 'dark';
-
-            // Add an event listener to handle changes.
             themeToggle.addEventListener('change', function() {
-                // When the toggle changes, update the theme and save the choice.
                 const newTheme = this.checked ? 'dark' : 'light';
                 document.documentElement.setAttribute('data-theme', newTheme);
                 localStorage.setItem('localBooruTheme', newTheme);
             });
+
+            // --- Factory Reset Logic ---
+            const factoryResetBtn = document.getElementById('factory-reset-btn');
+            factoryResetBtn.addEventListener('click', async () => {
+                const confirmationText = 'reset my booru';
+                const promptMessage = `This will permanently delete everything on the NEXT RESTART. This action cannot be undone.\n\nPlease type '${confirmationText}' to confirm.`;
+
+                const userInput = prompt(promptMessage);
+
+                if (userInput !== confirmationText) {
+                    showToast('Factory reset cancelled.', 'info');
+                    return;
+                }
+
+                try {
+                    factoryResetBtn.disabled = true;
+                    factoryResetBtn.textContent = 'Scheduling...';
+
+                    const response = await fetch('/api/factory_reset', {
+                        method: 'POST',
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.detail || 'An unknown error occurred.');
+                    }
+                    
+                    // Display the new message from the API, which instructs the user to restart.
+                    showToast(result.message, 'success');
+                    factoryResetBtn.textContent = 'Restart Pending';
+
+                } catch (error) {
+                    showToast(`Error: ${error.message}`, 'error');
+                    factoryResetBtn.disabled = false;
+                    factoryResetBtn.textContent = 'Reset Application';
+                }
+            });
         });
     </script>
-
 </body>
 </html>
