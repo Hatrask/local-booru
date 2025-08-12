@@ -946,3 +946,34 @@ input:checked + .toggle-slider:before {
 .danger-zone .action-button:hover {
     filter: brightness(1.2);
 }
+
+.file-input-container {
+    position: relative;
+    display: inline-block;
+}
+
+.file-input-label {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: white;
+    font-weight: bold;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    display: inline-block;
+}
+
+.file-input-label:hover {
+    filter: brightness(1.2);
+}
+
+/* Hide the default, ugly file input */
+.file-input-container input[type="file"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}

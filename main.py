@@ -54,7 +54,7 @@ def check_and_perform_reset():
 
 
 # --- Pydantic Models ---
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 class RenameTagRequest(BaseModel):
     new_name: str
@@ -701,6 +701,96 @@ def api_schedule_factory_reset():
         raise HTTPException(status_code=500, detail=f"Could not schedule reset. Reason: {e}")
 
     return JSONResponse({"message": "Reset has been scheduled. Please stop and restart the application server to complete the process."})
+
+@app.post("/api/import_collection")
+async def api_import_collection(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """
+    Imports a collection from a previously exported .zip file.
+    
+    This endpoint will:
+    1. Extract the uploaded zip to a temporary directory.
+    2. Read `metadata.json`.
+    3. Iterate through the images, skipping any that already exist (by SHA256 hash).
+    4. Copy the new image files to the `media/images` directory.
+    5. Add the new images and their tags to the database.
+    """
+    if not file.filename.endswith('.zip'):
+        raise HTTPException(status_code=400, detail="Invalid file type. Please upload a .zip file.")
+
+    # Create a secure temporary directory to extract the archive.
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            # Save the uploaded zip file temporarily
+            temp_zip_path = os.path.join(temp_dir, file.filename)
+            with open(temp_zip_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            # Extract the zip file
+            with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="The uploaded file is not a valid zip archive.")
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to process zip file: {e}")
+
+        # Verify the contents of the zip file
+        metadata_path = os.path.join(temp_dir, 'metadata.json')
+        images_dir_path = os.path.join(temp_dir, 'images')
+
+        if not os.path.exists(metadata_path) or not os.path.exists(images_dir_path):
+            raise HTTPException(status_code=400, detail="The zip archive is missing 'metadata.json' or the 'images/' directory.")
+
+        try:
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+        except (json.JSONDecodeError, ValidationError):
+            raise HTTPException(status_code=400, detail="Could not parse 'metadata.json'. The file may be corrupt.")
+
+        images_to_import = metadata.get('images', [])
+        if not images_to_import:
+            return JSONResponse({"message": "Metadata file contains no images to import."})
+
+        # --- Main Import Logic ---
+        # 1. Get all existing hashes for efficient duplicate checking.
+        existing_hashes = {res[0] for res in db.query(Image.sha256_hash).all()}
+        imported_count = 0
+        skipped_count = 0
+
+        for image_data in images_to_import:
+            # 2. Skip if image already exists in the database.
+            if image_data.get('sha256_hash') in existing_hashes:
+                skipped_count += 1
+                continue
+            
+            # 3. Copy the physical image file.
+            source_image_path = os.path.join(images_dir_path, image_data['filename'])
+            dest_image_path = os.path.join("media/images", image_data['filename'])
+            
+            if not os.path.exists(source_image_path):
+                continue # Skip if the image file is missing from the archive
+            
+            shutil.copy(source_image_path, dest_image_path)
+            
+            # 4. Get or create tags for the new image.
+            raw_tags = set(image_data.get('tags', []))
+            tags_for_image = get_or_create_tags(db, raw_tags)
+            
+            # 5. Create the new Image database record.
+            new_image = Image(
+                filename=image_data['filename'],
+                sha256_hash=image_data['sha256_hash'],
+                tags=tags_for_image
+            )
+            db.add(new_image)
+            
+            existing_hashes.add(new_image.sha256_hash)
+            imported_count += 1
+
+        db.commit()
+
+    return JSONResponse({
+        "message": f"Import complete. Added {imported_count} new images and skipped {skipped_count} duplicates."
+    })
 
 
 if __name__ == "__main__":

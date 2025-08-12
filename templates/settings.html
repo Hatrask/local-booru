@@ -27,6 +27,18 @@
             <h2>Data Management</h2>
             <div class="setting-item">
                 <div>
+                    <span class="setting-item-label">Import Collection</span>
+                    <p class="setting-item-description">Upload a <code>booru_export.zip</code> file to add its contents to your library.</p>
+                </div>
+                <form id="import-form">
+                    <div class="file-input-container">
+                        <label for="import-file-input" class="file-input-label" id="import-label">Choose File</label>
+                        <input type="file" id="import-file-input" accept=".zip">
+                    </div>
+                </form>
+            </div>
+            <div class="setting-item">
+                <div>
                     <span class="setting-item-label">Export Collection</span>
                     <p class="setting-item-description">Create a .zip archive of all images and their tags. Ideal for backups.</p>
                 </div>
@@ -35,18 +47,23 @@
             <div class="setting-item">
                 <div>
                     <span class="setting-item-label">Factory Reset</span>
-                    <p class="setting-item-description">Permanently delete all images, tags, and the database. This cannot be undone.</p>
+                    <p class="setting-item-description">Permanently delete all images, tags, and the database on next restart.</p>
                 </div>
                 <button id="factory-reset-btn" class="action-button">Reset Application</button>
             </div>
         </div>
     </div>
-
+    
     <script src="/static/js/notifications.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- Theme Toggle Logic ---
             const themeToggle = document.getElementById('theme-toggle');
+            const factoryResetBtn = document.getElementById('factory-reset-btn');
+            const importForm = document.getElementById('import-form');
+            const importFileInput = document.getElementById('import-file-input');
+            const importLabel = document.getElementById('import-label');
+
+            // --- Theme Toggle Logic ---
             const currentTheme = document.documentElement.getAttribute('data-theme');
             themeToggle.checked = currentTheme === 'dark';
             themeToggle.addEventListener('change', function() {
@@ -55,12 +72,48 @@
                 localStorage.setItem('localBooruTheme', newTheme);
             });
 
+            // --- Import Logic ---
+            importFileInput.addEventListener('change', async () => {
+                const file = importFileInput.files[0];
+                if (!file) {
+                    return;
+                }
+
+                const originalLabelText = importLabel.textContent;
+                importLabel.textContent = 'Importing...';
+                importFileInput.disabled = true;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch('/api/import_collection', {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.detail || 'An unknown error occurred during import.');
+                    }
+                    
+                    showToast(result.message, 'success');
+
+                } catch (error) {
+                    showToast(`Error: ${error.message}`, 'error');
+                } finally {
+                    // Reset the form and button regardless of outcome
+                    importLabel.textContent = originalLabelText;
+                    importFileInput.disabled = false;
+                    importForm.reset();
+                }
+            });
+
             // --- Factory Reset Logic ---
-            const factoryResetBtn = document.getElementById('factory-reset-btn');
             factoryResetBtn.addEventListener('click', async () => {
                 const confirmationText = 'reset my booru';
                 const promptMessage = `This will permanently delete everything on the NEXT RESTART. This action cannot be undone.\n\nPlease type '${confirmationText}' to confirm.`;
-
                 const userInput = prompt(promptMessage);
 
                 if (userInput !== confirmationText) {
@@ -71,21 +124,11 @@
                 try {
                     factoryResetBtn.disabled = true;
                     factoryResetBtn.textContent = 'Scheduling...';
-
-                    const response = await fetch('/api/factory_reset', {
-                        method: 'POST',
-                    });
-
+                    const response = await fetch('/api/factory_reset', { method: 'POST' });
                     const result = await response.json();
-
-                    if (!response.ok) {
-                        throw new Error(result.detail || 'An unknown error occurred.');
-                    }
-                    
-                    // Display the new message from the API, which instructs the user to restart.
+                    if (!response.ok) throw new Error(result.detail);
                     showToast(result.message, 'success');
                     factoryResetBtn.textContent = 'Restart Pending';
-
                 } catch (error) {
                     showToast(`Error: ${error.message}`, 'error');
                     factoryResetBtn.disabled = false;
