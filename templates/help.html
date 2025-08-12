@@ -18,7 +18,7 @@
                 <li><a href="#gallery">2. The Gallery & Searching</a></li>
                 <li><a href="#categories">3. The Tag Category System</a></li>
                 <li><a href="#advanced">4. Advanced Management</a></li>
-                <li><a href="#cli">5. Command-Line Utilities</a></li>
+                <li><a href="#settings">5. Settings & Data Management</a></li>
                 <li><a href="#shortcuts">6. Keyboard Shortcuts</a></li>
             </ul>
         </div>
@@ -160,34 +160,38 @@
             <li><strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong></li>
         </ul>
         
-        <!-- Section 5: Command-Line Utilities -->
-        <h3 id="cli">5. Command-Line Utilities</h3>
+        <!-- Section 5: Settings & Data Management -->
+        <h3 id="settings">5. Settings & Data Management</h3>
         <p>
-            Some maintenance tasks are performed using scripts from the command line, not the web interface. You must have terminal access to the server where the application is running to use these tools.
+            The <strong><a href="/settings">Settings</a></strong> page provides high-level tools for managing your application's appearance and your entire collection data.
         </p>
 
-        <h4>Exporting Your Collection</h4>
-        <p>
-            You can create a complete backup of your collection in a single `.zip` file. This is perfect for backups or migrating your collection to another system without losing any data.
-        </p>
-        <ol>
-            <li>Navigate to the application's root directory in your terminal.</li>
-            <li>Run the script using the command: <code>python export_collection.py</code></li>
-            <li>A file named <code>booru_export.zip</code> will be created, containing all images and a `metadata.json` file with all tag information.</li>
-        </ol>
+        <h4>Appearance</h4>
+        <ul>
+            <li><strong>Enable Dark Mode:</strong> Use this toggle to switch between a light and dark theme. By default, the application will try to match your system's theme. Your choice here will override the default and will be saved in your browser.</li>
+        </ul>
         
+        <h4>Data Management</h4>
+        <ul>
+            <li>
+                <strong>Import Collection:</strong> Allows you to upload a <code>booru_export.zip</code> file. The application will intelligently scan the file and import only the images and tags that you don't already have, preventing duplicates.
+            </li>
+            <li>
+                <strong>Export Collection:</strong> Instantly downloads a complete backup of your collection in a single <code>booru_export.zip</code> file. This archive contains all images and a `metadata.json` file with all tag information, perfect for backups or migration.
+            </li>
+        </ul>
+
         <div class="danger-zone">
             <h4>Danger Zone: Factory Reset</h4>
             <p>
-                If you want to completely wipe all data and start over, you can use the provided command-line script. This is a highly destructive and irreversible action that will delete all images, tags, and the entire database.
+                The factory reset function allows you to completely wipe all data and start over. This is a highly destructive and irreversible action that will delete all images, tags, and the entire database.
             </p>
             <h5>How to perform a factory reset:</h5>
             <ol>
-                <li>1. <strong>Stop the application server.</strong> This is critical to ensure the database file is not locked.</li>
-                <li>2. Navigate to the application's root directory in your terminal.</li>
-                <li>3. Run the script using the command: <code>python reset_app.py</code></li>
-                <li>4. The script will ask for a final confirmation. You must type <code>reset my booru</code> to proceed.</li>
-                <li>5. Once the script is finished, you can restart the application server. It will be in a clean, factory-new state.</li>
+                <li>1. Go to the <strong><a href="/settings">Settings</a></strong> page and click the "Reset Application" button.</li>
+                <li>2. A prompt will appear asking for a final confirmation. You must type <code>reset my booru</code> to proceed.</li>
+                <li>3. The reset will be scheduled. <strong>You must stop and restart the application server to complete the process.</strong></li>
+                <li>4. When the application starts up next, it will detect the reset request, wipe all data, and start in a clean, factory-new state.</li>
             </ol>
         </div>
 

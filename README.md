@@ -9,6 +9,7 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
 
 *   **Duplicate File Prevention:** Calculates the SHA256 hash of each uploaded file to prevent adding duplicate images to your library.
 *   **Categorized Tagging:** Organizes tags into five distinct categories (`general`, `artist`, `character`, `copyright`, `metadata`). Tags are color-coded in the UI for quick identification.
+*   **Data Management UI:** Easily import and export your entire collection, or perform a factory reset, directly from the Settings page in the web interface.
 *   **Tag-Based Search Syntax:** Find images using a dedicated query language that supports `AND`, `OR`, `NOT`, and `wildcard (*)` logic, along with a special `untagged` keyword.
 *   **Saved & Recent Searches:** Automatically keeps a list of your recent queries. You can "pin" your most important searches for permanent access from the search bar.
 *   **Image Gallery with Integrated Editor:** Browse your collection in a masonry-style grid. Clicking an image opens a two-state lightbox:
@@ -69,36 +70,8 @@ Follow these steps to get `local-booru` running on your local machine.
 2.  **Browse:** Navigate to the "Gallery" to see your collection. Press `T` to toggle the tag tooltips on and off.
 3.  **Search:** Use the search bar to filter images. You can now search by category (e.g., `character:reimu_hakurei`).
 4.  **View & Edit:** Click any image to open it in the lightbox. In **View Mode**, you can navigate between images. Press `E` to switch to **Edit Mode**, where a sidebar appears, allowing you to modify the image's tags. Press `S` to save your changes or `Esc` to cancel and return to view mode.
-5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization, including changing tag categories.
-6.  **Manage Searches:** Visit the "Saved Searches" page to organize your pinned and recent search queries.
-
-## Maintenance
-
-### Exporting Your Collection
-
-A command-line script is provided to export your entire collection into a single `.zip` file. This is perfect for creating backups or migrating to another system without any data loss.
-
-1.  Navigate to the project's root directory in your terminal.
-2.  Run the script:
-    ```bash
-    python export_collection.py
-    ```
-3.  A file named `booru_export.zip` will be created. This archive contains:
-    *   A `metadata.json` file with information about every image and its associated tags.
-    *   An `images/` folder containing all of your uploaded media.
-
-### Factory Reset
-
-If you wish to completely erase all data and start over, a command-line script is provided. **This is a destructive, irreversible action.**
-
-1.  **Stop the application server.** This is a critical step to prevent file-locking errors.
-2.  Navigate to the project's root directory in your terminal.
-3.  Run the script:
-    ```bash
-    python reset_app.py
-    ```
-4.  The script will ask for a final confirmation. Type `reset my booru` to proceed.
-5.  Once the script is finished, you can restart the application server for a fresh start.
+5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
+6.  **Manage Data:** Visit the **Settings** page to import/export your collection or perform a factory reset.
 
 ## File Structure
 
@@ -107,9 +80,8 @@ Your data is stored in the root directory of the project.
 *   `database.db`: The SQLite database file containing all image and tag information. It is automatically created and managed by the application.
 *   `media/images/`: All your uploaded image files are stored here.
 *   `undo_state.json`: This file is created temporarily when you perform a batch tag action, allowing you to undo it. It is deleted after a successful undo or overwritten by the next batch action.
-*   `booru_export.zip`: The default output file created when you run the export script.
 
-**Note:** Saved searches are stored directly in your web browser's `localStorage` and are not part of the server-side file structure.
+**Note:** Saved searches and theme preferences are stored directly in your web browser's `localStorage` and are not part of the server-side file structure.
 
 ## Contributing
 
