@@ -248,7 +248,7 @@ form.search-form-index button:hover { background-color: var(--color-accent-hover
     max-height: 250px; overflow-y: auto;
 }
 .preview-thumb-wrapper { position: relative; }
-.preview-thumb { width: 105px; height: 105px; object-fit: cover; border: 1px solid var(--color-border); border-radius: var(--border-radius); display: block; }
+.preview-thumb { width: 100px; height: 100px; object-fit: cover; border: 1px solid var(--color-border); border-radius: var(--border-radius); display: block; }
 .preview-remove-btn {
     position: absolute; top: -5px; right: -5px; width: 20px; height: 20px;
     background-color: var(--color-danger); color: white; border: 1px solid var(--color-bg-primary);
