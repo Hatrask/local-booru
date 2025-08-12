@@ -1,3 +1,4 @@
+# Updated main.py
 import shutil, os, uuid, json, hashlib, sqlite3
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
@@ -16,6 +17,9 @@ class RenameTagRequest(BaseModel):
 
 class ChangeCategoryRequest(BaseModel):
     new_category: str
+
+class UpdateTagsRequest(BaseModel):
+    tags: List[str] = []
 
 # --- Application Initialization ---
 app = FastAPI(
@@ -210,26 +214,6 @@ def help_page(request: Request):
 def saved_searches_page(request: Request):
     return templates.TemplateResponse("saved_searches.html", {"request": request})
 
-@app.get("/image/{image_id}", response_class=HTMLResponse)
-def image_detail_page(request: Request, image_id: int, db: Session = Depends(get_db)):
-    image = db.query(Image).options(orm.joinedload(Image.tags)).filter(Image.id == image_id).first()
-    if not image:
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    # Format tags for display in the text editor, including prefixes for non-general tags.
-    tags_list = []
-    sorted_tags = sorted(image.tags, key=lambda t: (t.category, t.name))
-    for tag in sorted_tags:
-        if tag.category == 'general':
-            tags_list.append(tag.name)
-        else:
-            tags_list.append(f"{tag.category}:{tag.name}")
-    tags_str = ", ".join(tags_list)
-    
-    return templates.TemplateResponse("image_detail.html", {
-        "request": request, "image": image, "tags_str": tags_str
-    })
-
 # --- API Endpoints ---
 
 @app.post("/upload")
@@ -272,16 +256,28 @@ def upload_images(
         status_code=200
     )
 
-@app.post("/retag/{image_id}")
-def retag_image(image_id: int, tags: str = Form(""), db: Session = Depends(get_db)):
+# This new endpoint replaces the old form-based /retag/{image_id} route.
+# It accepts a JSON body, making it suitable for modern frontend interactions.
+@app.put("/api/image/{image_id}/tags")
+def api_update_image_tags(image_id: int, request: UpdateTagsRequest, db: Session = Depends(get_db)):
+    """
+    Replaces all tags on a single image. Designed for the new lightbox editor.
+    """
     image = db.query(Image).options(orm.joinedload(Image.tags)).filter(Image.id == image_id).first()
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
     
-    tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
+    # The frontend sends a list of raw tag strings (e.g., "artist:someone", "general_tag")
+    tag_names = {t.strip().lower() for t in request.tags if t.strip()}
     image.tags = get_or_create_tags(db, tag_names)
     db.commit()
-    return RedirectResponse(f"/image/{image_id}", status_code=303)
+
+    # Return the updated tag list in the standard, sorted format for immediate UI update.
+    updated_tags = sorted(
+        [{"name": tag.name, "category": tag.category} for tag in image.tags],
+        key=lambda t: (t['category'], t['name'])
+    )
+    return JSONResponse({"message": "Tags updated successfully.", "tags": updated_tags})
 
 @app.get("/api/images")
 def api_get_images(
