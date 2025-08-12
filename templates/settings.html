@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Settings - local-booru</title>
+</head>
+<body>
+    {% include '_header.html' %}
+
+    <div class="settings-container">
+
+        <div class="settings-section">
+            <h2>Appearance</h2>
+            <div class="setting-item">
+                <div>
+                    <label for="theme-toggle" class="setting-item-label">Enable Dark Mode</label>
+                    <p class="setting-item-description">Force the interface to use dark or light mode, overriding the system default.</p>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggle = document.getElementById('theme-toggle');
+
+            // Set the initial state of the toggle based on the *actual* current theme.
+            // The theme is already applied by the script in the header.
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            themeToggle.checked = currentTheme === 'dark';
+
+            // Add an event listener to handle changes.
+            themeToggle.addEventListener('change', function() {
+                // When the toggle changes, update the theme and save the choice.
+                const newTheme = this.checked ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('localBooruTheme', newTheme);
+            });
+        });
+    </script>
+
+</body>
+</html>

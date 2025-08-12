@@ -230,13 +230,17 @@ def batch_actions(request: Request, q: Optional[str] = Query(None)):
 def tag_manager_page(request: Request):
     return templates.TemplateResponse("tag_manager.html", {"request": request, "active_page": "tag_manager"})
 
+@app.get("/saved_searches", response_class=HTMLResponse)
+def saved_searches_page(request: Request):
+    return templates.TemplateResponse("saved_searches.html", {"request": request, "active_page": "saved_searches"})
+
 @app.get("/help", response_class=HTMLResponse)
 def help_page(request: Request):
     return templates.TemplateResponse("help.html", {"request": request, "active_page": "help"})
 
-@app.get("/saved_searches", response_class=HTMLResponse)
-def saved_searches_page(request: Request):
-    return templates.TemplateResponse("saved_searches.html", {"request": request, "active_page": "saved_searches"})
+@app.get("/settings", response_class=HTMLResponse)
+def settings_page(request: Request):
+    return templates.TemplateResponse("settings.html", {"request": request, "active_page": "settings"})
 
 # --- API Endpoints ---
 

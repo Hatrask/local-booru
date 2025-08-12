@@ -1,3 +1,20 @@
+<head>
+	<meta charset="UTF-8" />
+	<link rel="stylesheet" href="/static/css/styles.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('localBooruTheme');
+            if (savedTheme) {
+                // Use the user's explicit choice if it exists.
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } else {
+                // Otherwise, detect and apply the system's theme preference.
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+            }
+        })();
+    </script>
+</head>
 <header class="main-header">
     <div class="header-content">
         <a href="/" class="logo-link">
@@ -10,6 +27,7 @@
             <a href="/tag_manager" class="nav-link {% if active_page == 'tag_manager' %}active{% endif %}">Tag Manager</a>
             <a href="/saved_searches" class="nav-link {% if active_page == 'saved_searches' %}active{% endif %}">Saved Searches</a>
             <a href="/help" class="nav-link {% if active_page == 'help' %}active{% endif %}">Help</a>
+            <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
         </nav>
     </div>
 </header>
