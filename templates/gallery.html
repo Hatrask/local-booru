@@ -573,23 +573,34 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
-        // Ignore key presses if the user is typing in an input field, unless it's Escape in the lightbox
-        if (e.target.matches('input, textarea')) {
-             if (e.key === 'Escape' && lightboxModal.style.display === 'flex') {
+        // Handle Escape key logic for the lightbox first.
+        if (e.key === 'Escape' && lightboxModal.style.display === 'flex') {
+            e.preventDefault(); // Prevent other actions like closing the page.
+            // If in edit mode, exit to view mode (like clicking "Cancel").
+            if (lightboxContent.classList.contains('edit-mode')) {
+                setLightboxMode('view');
+                showImageInLightbox(currentImages[currentImageIndex]);
+            } else {
+                // Otherwise, if in view mode, close the lightbox.
                 closeLightbox();
             }
+            return; // Stop further execution.
+        }
+        
+        // Ignore other key presses if the user is typing in an input field.
+        if (e.target.matches('input, textarea')) {
             return;
         }
 
-        // Lightbox-specific shortcuts
-        if (lightboxModal.style.display === 'flex') {
-            if (lightboxContent.classList.contains('view-mode')) {
-                 if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') navigateLightbox(1);
-                 else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') navigateLightbox(-1);
-            }
-            if (e.key === 'Escape') closeLightbox();
-        } else {
-            // Gallery-specific shortcuts
+        // --- Handle other shortcuts only when not typing ---
+        
+        // Lightbox-specific navigation (only in view mode)
+        if (lightboxModal.style.display === 'flex' && lightboxContent.classList.contains('view-mode')) {
+            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') navigateLightbox(1);
+            else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') navigateLightbox(-1);
+        } 
+        // Gallery-specific shortcuts (when lightbox is closed)
+        else if (lightboxModal.style.display !== 'flex') {
             if ((e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') && hasMorePages) {
                 loadPage(currentPage + 1);
             } else if ((e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') && currentPage > 1) {
