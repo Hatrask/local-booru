@@ -53,8 +53,8 @@
                     <h4 id="lightbox-image-id"></h4>
                     <div class="tag-pills-container"></div>
                     <div class="lightbox-actions">
-                         <button id="lightbox-edit-btn" class="action-button">Edit Tags</button>
-                         <button id="lightbox-delete-btn" class="action-button danger">Delete</button>
+                         <button id="lightbox-edit-btn" class="action-button" title="Edit (E)">Edit Tags</button>
+                         <button id="lightbox-delete-btn" class="action-button danger" title="Delete (Shift+D)">Delete</button>
                     </div>
                 </div>
             </div>
@@ -82,8 +82,8 @@
                     </div>
 
                     <div class="lightbox-actions">
-                        <button id="lightbox-save-btn" class="action-button">Save</button>
-                        <button id="lightbox-cancel-btn" class="action-button">Cancel</button>
+                        <button id="lightbox-save-btn" class="action-button" title="Save (S)">Save</button>
+                        <button id="lightbox-cancel-btn" class="action-button" title="Cancel (Esc)">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -573,46 +573,73 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
-        // Handle Escape key logic for the lightbox first.
-        if (e.key === 'Escape' && lightboxModal.style.display === 'flex') {
-            e.preventDefault(); // Prevent other actions like closing the page.
-            // If in edit mode, exit to view mode (like clicking "Cancel").
-            if (lightboxContent.classList.contains('edit-mode')) {
-                setLightboxMode('view');
-                showImageInLightbox(currentImages[currentImageIndex]);
-            } else {
-                // Otherwise, if in view mode, close the lightbox.
-                closeLightbox();
-            }
-            return; // Stop further execution.
-        }
-        
-        // Ignore other key presses if the user is typing in an input field.
-        if (e.target.matches('input, textarea')) {
-            return;
-        }
-
-        // --- Handle other shortcuts only when not typing ---
-        
-        // Lightbox-specific navigation (only in view mode)
-        if (lightboxModal.style.display === 'flex' && lightboxContent.classList.contains('view-mode')) {
-            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') navigateLightbox(1);
-            else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') navigateLightbox(-1);
-        } 
-        // Gallery-specific shortcuts (when lightbox is closed)
-        else if (lightboxModal.style.display !== 'flex') {
-            if ((e.key.toLowerCase() === 'd' || e.key === 'ArrowRight') && hasMorePages) {
-                loadPage(currentPage + 1);
-            } else if ((e.key.toLowerCase() === 'a' || e.key === 'ArrowLeft') && currentPage > 1) {
-                loadPage(currentPage - 1);
-            } else if (e.key.toLowerCase() === 't') {
-                isTooltipModeEnabled = !isTooltipModeEnabled;
-                localStorage.setItem(TOOLTIP_MODE_KEY, isTooltipModeEnabled);
-                const message = `Tooltip mode ${isTooltipModeEnabled ? 'enabled' : 'disabled'}.`;
-                showToast(message, 'info');
-                if (!isTooltipModeEnabled) {
-                    hideTooltip();
+        // --- Lightbox is OPEN ---
+        if (lightboxModal.style.display === 'flex') {
+            // Handle Escape key first, as it applies to both modes.
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (lightboxContent.classList.contains('edit-mode')) {
+                    setLightboxMode('view');
+                    showImageInLightbox(currentImages[currentImageIndex]);
+                } else {
+                    closeLightbox();
                 }
+                return;
+            }
+
+            // --- In VIEW MODE ---
+            if (lightboxContent.classList.contains('view-mode')) {
+                 if (e.target.matches('input, textarea')) return;
+
+                // Handle Shift+D for deletion first to prevent fall-through.
+                if (e.shiftKey && e.key.toLowerCase() === 'd') {
+                    e.preventDefault();
+                    lightboxDeleteBtn.click();
+                    return; // Explicitly stop here so it doesn't trigger navigation.
+                }
+
+                switch (e.key.toLowerCase()) {
+                    case 'd':
+                    case 'arrowright':
+                        navigateLightbox(1);
+                        break;
+                    case 'a':
+                    case 'arrowleft':
+                        navigateLightbox(-1);
+                        break;
+                    case 'e':
+                        setLightboxMode('edit');
+                        break;
+                }
+            }
+            // --- In EDIT MODE ---
+            else if (lightboxContent.classList.contains('edit-mode')) {
+                if (e.key.toLowerCase() === 's' && document.activeElement !== lightboxTagInput) {
+                    e.preventDefault();
+                    lightboxSaveBtn.click();
+                }
+            }
+        }
+        // --- Lightbox is CLOSED ---
+        else {
+            if (e.target.matches('input, textarea')) return;
+
+            switch (e.key.toLowerCase()) {
+                case 'd':
+                case 'arrowright':
+                    if (hasMorePages) loadPage(currentPage + 1);
+                    break;
+                case 'a':
+                case 'arrowleft':
+                    if (currentPage > 1) loadPage(currentPage - 1);
+                    break;
+                case 't':
+                    isTooltipModeEnabled = !isTooltipModeEnabled;
+                    localStorage.setItem(TOOLTIP_MODE_KEY, isTooltipModeEnabled);
+                    const message = `Tooltip mode ${isTooltipModeEnabled ? 'enabled' : 'disabled'}.`;
+                    showToast(message, 'info');
+                    if (!isTooltipModeEnabled) hideTooltip();
+                    break;
             }
         }
     }
