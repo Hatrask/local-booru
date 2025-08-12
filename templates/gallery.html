@@ -65,12 +65,15 @@
                     <div id="lightbox-tag-editor-container">
                         <div id="lightbox-tag-editor-pills"></div>
                         <div class="autocomplete-container">
-                             <input type="text" id="lightbox-tag-input" placeholder="Add a tag..." autocomplete="off">
+                             <input type="text" id="lightbox-tag-input" placeholder="Add or search for a tag..." autocomplete="off">
                              <div class="suggestions" id="lightbox-suggestions"></div>
                         </div>
                     </div>
                     <div id="lightbox-tag-helper">
-                        <!-- Tag helper content (Suggestions/Search tabs) will go here -->
+                        <h5 id="tag-helper-title">Recent Tags</h5>
+                        <div id="tag-helper-content-area">
+                            <!-- Dynamic content (recents or search results) is rendered here -->
+                        </div>
                     </div>
                     <div class="lightbox-actions">
                         <button id="lightbox-save-btn" class="action-button">Save</button>
@@ -96,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOOLTIP_SHOW_DELAY = 100;
     const TOOLTIP_HIDE_DELAY = 50;
     const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled';
+    const AUTOCOMPLETE_LIMIT = 25; // Increased limit for the main tag input
 
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
@@ -126,6 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxSuggestions = document.getElementById('lightbox-suggestions');
     const lightboxTagEditorPills = document.getElementById('lightbox-tag-editor-pills');
 
+    // Tag Helper Elements
+    const tagHelperTitle = document.getElementById('tag-helper-title');
+    const tagHelperContentArea = document.getElementById('tag-helper-content-area');
+
 
     // --- 3. STATE MANAGEMENT ---
     const urlParams = new URLSearchParams(window.location.search);
@@ -139,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let showTooltipTimer, hideTooltipTimer;
     let isTooltipModeEnabled = localStorage.getItem(TOOLTIP_MODE_KEY) === 'true';
     let lightboxEditStateTags = new Set();
+    let searchDebounceTimer;
 
     // --- 4. CORE FUNCTIONS ---
 
@@ -269,11 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = 'auto';
     }
     
-    function setLightboxMode(mode) { // 'view' or 'edit'
+    async function setLightboxMode(mode) { // 'view' or 'edit'
         if (mode === 'edit') {
             lightboxContent.classList.remove('view-mode');
             lightboxContent.classList.add('edit-mode');
             renderTagEditor();
+            await showRecentsInHelper();
         } else {
             lightboxContent.classList.remove('edit-mode');
             lightboxContent.classList.add('view-mode');
@@ -420,7 +430,65 @@ document.addEventListener('DOMContentLoaded', () => {
         openLightbox(currentImages.length - 1);
     }
 
-    // --- 6. MISC UI & TOOLTIP FUNCTIONS ---
+    // --- 6. DYNAMIC TAG HELPER FUNCTIONS ---
+    
+    function renderTagCloudInHelper(tags, container) {
+        container.innerHTML = '';
+        if (!tags || tags.length === 0) {
+            container.innerHTML = '<p>No tags found.</p>';
+            return;
+        }
+
+        tags.forEach(rawTagName => {
+            let name, category;
+            if (rawTagName.includes(':')) {
+                [category, name] = rawTagName.split(':', 2);
+            } else {
+                category = 'general';
+                name = rawTagName;
+            }
+            const pill = document.createElement('a');
+            pill.href = '#';
+            pill.className = `tag-pill ${getTagCategoryClass(category)}`;
+            pill.textContent = name;
+            pill.dataset.tag = rawTagName;
+            container.appendChild(pill);
+        });
+    }
+
+    async function showRecentsInHelper() {
+        tagHelperTitle.textContent = 'Recent Tags';
+        try {
+            const response = await fetch('/api/tags/recent?limit=50');
+            if (!response.ok) throw new Error('Could not fetch recent tags.');
+            const tags = await response.json();
+            renderTagCloudInHelper(tags, tagHelperContentArea);
+        } catch (error) {
+            console.error(error);
+            tagHelperContentArea.innerHTML = '<p>Error loading tags.</p>';
+        }
+    }
+
+    async function showSearchResultsInHelper(query) {
+        tagHelperTitle.textContent = 'Search Results';
+        try {
+            const response = await fetch(`/api/tags/autocomplete?q=${encodeURIComponent(query)}&limit=50`);
+            if (!response.ok) throw new Error('Tag search failed');
+            const tags = await response.json();
+            renderTagCloudInHelper(tags, tagHelperContentArea);
+        } catch (error) {
+            console.error(error);
+            tagHelperContentArea.innerHTML = '<p>Error searching tags.</p>';
+        }
+    }
+
+    function addTagFromHelper(rawTagName) {
+        lightboxEditStateTags.add(rawTagName);
+        updateEditorPills();
+    }
+
+
+    // --- 7. MISC UI & TOOLTIP FUNCTIONS ---
 
     /**
      * Sets the CSS variable for thumbnail width and saves the preference to localStorage.
@@ -475,14 +543,14 @@ document.addEventListener('DOMContentLoaded', () => {
         tagTooltip.classList.add('visible');
     }
 
-    // --- 7. EVENT HANDLERS ---
+    // --- 8. EVENT HANDLERS ---
 
     /**
      * Handles all global keydown events for navigation and feature toggles.
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
-        // Ignore key presses if the user is typing in an input field.
+        // Ignore key presses if the user is typing in an input field, unless it's Escape in the lightbox
         if (e.target.matches('input, textarea')) {
              if (e.key === 'Escape' && lightboxModal.style.display === 'flex') {
                 closeLightbox();
@@ -545,6 +613,7 @@ document.addEventListener('DOMContentLoaded', () => {
      * Sets up all initial event listeners for the page.
      */
     function initialize() {
+        // Initial setup calls
         const savedSize = localStorage.getItem('thumbSize') || DEFAULT_THUMB_SIZE;
         applyThumbSize(savedSize);
         if (query) { batchEditLink.style.display = 'inline-block'; }
@@ -564,7 +633,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Lightbox state change listeners
         lightboxEditBtn.addEventListener('click', () => setLightboxMode('edit'));
-        lightboxCancelBtn.addEventListener('click', () => setLightboxMode('view'));
+        lightboxCancelBtn.addEventListener('click', () => {
+            setLightboxMode('view');
+            showImageInLightbox(currentImages[currentImageIndex]); // Restore original tags on cancel
+        });
         lightboxSaveBtn.addEventListener('click', handleSaveTags);
         lightboxDeleteBtn.addEventListener('click', handleDelete);
         
@@ -581,27 +653,32 @@ document.addEventListener('DOMContentLoaded', () => {
         
         lightboxTagInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                e.preventDefault(); // Prevent form submission
+                e.preventDefault();
                 const tagValue = e.target.value.trim().toLowerCase();
                 if (tagValue) {
                     lightboxEditStateTags.add(tagValue);
                     updateEditorPills();
                     e.target.value = '';
-                    // Hide suggestions manually if autocomplete is open
-                    const suggestionsEl = e.target.nextElementSibling;
-                    if (suggestionsEl && suggestionsEl.classList.contains('suggestions')) {
-                        suggestionsEl.style.display = 'none';
-                    }
+                    lightboxSuggestions.style.display = 'none';
+                    showRecentsInHelper();
                 }
             }
         });
 
-        // Setup autocomplete for the new tag input in the lightbox
-        setupTagAutocomplete(lightboxTagInput, lightboxSuggestions, {
-            onSelect: (tag) => {
-                lightboxEditStateTags.add(tag);
-                updateEditorPills();
-                lightboxTagInput.value = '';
+        lightboxTagInput.addEventListener('input', (e) => {
+            const query = e.target.value.trim();
+            clearTimeout(searchDebounceTimer);
+            if (query.length > 1) {
+                searchDebounceTimer = setTimeout(() => showSearchResultsInHelper(query), 200);
+            } else {
+                showRecentsInHelper();
+            }
+        });
+
+        tagHelperContentArea.addEventListener('click', (e) => {
+            if (e.target.matches('a.tag-pill')) {
+                e.preventDefault();
+                addTagFromHelper(e.target.dataset.tag);
             }
         });
 

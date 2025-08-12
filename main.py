@@ -344,6 +344,20 @@ def api_get_images(
     } for image in images]
     return JSONResponse({"images": result, "page": page, "limit": limit, "total": total, "has_more": (page * limit) < total})
 
+@app.get("/api/tags/recent")
+def api_get_recent_tags(limit: int = Query(25, ge=1, le=100), db: Session = Depends(get_db)):
+    """
+    Returns the most recently created tags, which is useful for the Tag Helper UI.
+    """
+    recent_tags = db.query(Tag).order_by(desc(Tag.id)).limit(limit).all()
+    results = []
+    for tag in recent_tags:
+        if tag.category == 'general':
+            results.append(tag.name)
+        else:
+            results.append(f"{tag.category}:{tag.name}")
+    return JSONResponse(results)
+
 @app.get("/api/tags/autocomplete")
 def api_autocomplete_tags(q: Optional[str] = Query(None, min_length=1), limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)):
     if not q: return []
