@@ -233,7 +233,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
                 break;
             case 'select-query':
                 inputElement.value = query;
-                touchPinnedSearch(query); // from saved_searches_manager.js
+                addRecentSearch(query); // from saved_searches_manager.js
                 hideSuggestions();
                 break;
             case 'pin-query':
