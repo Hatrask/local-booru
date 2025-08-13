@@ -19,6 +19,10 @@ undo_state.json
 # Reset Pending Marker
 .reset_pending
 
+# Pyinstaller
+build/
+dist/
+
 # IDE / OS specific
 .vscode/
 .idea/
