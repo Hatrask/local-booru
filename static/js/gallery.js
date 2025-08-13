@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let galleryManager;
     let currentPage = parseInt(urlParams.get('page'), 10) || 1;
     let lightboxNavDirection = 0; // 1 for forward, -1 for backward
+    let actionAfterReload = null; // Used for actions like reopening lightbox after delete
 
     // --- 4. RENDERER FOR THE SHARED MANAGER ---
 
@@ -197,21 +198,40 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleDelete(event) {
         const imageId = event.target.dataset.imageId;
         if (!imageId) return;
+    
         const confirmed = await showConfirmation('Are you sure you want to permanently delete this image? This cannot be undone.');
         if (!confirmed) return;
+    
+        // Determine which image to show next. Usually the one before, or the first one if deleting the first.
+        const indexToShowAfterDelete = Math.max(0, currentImageIndex - 1);
+    
+        // Set a flag for the onPageLoad callback to handle reopening the lightbox.
+        actionAfterReload = { type: 'reopenLightbox', index: indexToShowAfterDelete };
+    
+        // Show loading indicator inside the lightbox while the deletion and reload happens.
+        lightboxLoadingIndicator.style.display = 'block';
+    
         try {
             const response = await fetch(`/api/image/${imageId}`, { method: 'DELETE' });
+    
             if (response.ok) {
                 showToast('Image deleted successfully.', 'success');
-                closeLightbox();
+                // Don't close the lightbox. Reload the gallery.
+                // The onPageLoad callback will handle reopening the lightbox at the correct index.
                 galleryManager.reload(currentPage);
             } else {
                 const result = await response.json();
                 showToast(result.detail || 'Failed to delete image.', 'error');
+                // On failure, hide the loading indicator and reset the action.
+                lightboxLoadingIndicator.style.display = 'none';
+                actionAfterReload = null;
             }
         } catch (error) {
             console.error('Error deleting image:', error);
             showToast('An unexpected error occurred.', 'error');
+            // On error, hide the loading indicator and reset the action.
+            lightboxLoadingIndicator.style.display = 'none';
+            actionAfterReload = null;
         }
     }
 
@@ -548,16 +568,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentImages = images;
                 currentPage = galleryManager.getCurrentPage();
                 hideTooltip();
-
-                // This logic block handles opening the lightbox after a page navigation.
-                if (lightboxLoadingIndicator.style.display === 'block') {
-                    lightboxLoadingIndicator.style.display = 'none';
-
-                    const newIndex = lightboxNavDirection === 1 ? 0 : currentImages.length - 1;
+        
+                // Always hide the loading indicator when a page load completes.
+                lightboxLoadingIndicator.style.display = 'none';
+        
+                // Case 1: A deletion just occurred. We need to reopen the lightbox.
+                if (actionAfterReload && actionAfterReload.type === 'reopenLightbox') {
+                    if (images.length === 0) {
+                        // This can happen if the user deletes the last image on a page.
+                        closeLightbox();
+                    } else {
+                        // Clamp the index to be within the bounds of the new image list.
+                        const newIndex = Math.min(actionAfterReload.index, images.length - 1);
+                        openLightbox(newIndex);
+                    }
+                    actionAfterReload = null; // Consume the action so it doesn't fire again.
+                }
+                // Case 2: A lightbox navigation to a new page occurred.
+                else if (lightboxNavDirection !== 0) {
+                    const newIndex = lightboxNavDirection === 1 ? 0 : images.length - 1;
                     openLightbox(newIndex);
-                    
-                    // Reset the direction tracker after use.
-                    lightboxNavDirection = 0;
+                    lightboxNavDirection = 0; // Reset the direction tracker.
                 }
             }
         });
