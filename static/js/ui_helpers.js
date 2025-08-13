@@ -43,3 +43,28 @@ function getTagCategoryClass(category) {
     }
     return 'tag-general';
 }
+
+/**
+ * Generates the HTML for a set of color-coded, clickable tag pills.
+ * Can create either static links or editable pills with remove buttons.
+ * @param {Array<Object>} tags - An array of tag objects [{name, category}].
+ * @param {boolean} [isEditable=false] - If true, renders editable pills with remove buttons.
+ * @returns {string} The HTML string for the tag pills.
+ */
+function renderTagPills(tags, isEditable = false) {
+    if (!tags || tags.length === 0) {
+        // Provide a default for non-editable contexts, and nothing for editable ones.
+        return !isEditable ? '<span>No tags</span>' : '';
+    }
+    return tags.map(tag => {
+        const categoryClass = getTagCategoryClass(tag.category);
+        const rawTagName = tag.category === 'general' ? tag.name : `${tag.category}:${tag.name}`;
+        
+        if (isEditable) {
+             return `<span class="tag-pill ${categoryClass}" data-tag="${rawTagName}">${tag.name}<button class="remove-tag-btn">×</button></span>`;
+        } else {
+            const searchLink = `?q=${encodeURIComponent(rawTagName)}`;
+            return `<a href="${searchLink}" class="tag-pill ${categoryClass}">${tag.name}</a>`;
+        }
+    }).join('');
+}
