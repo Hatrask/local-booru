@@ -38,6 +38,7 @@
     /* Layout */
     --border-radius: 4px;
     --thumb-width: 250px;
+	--lightbox-view-mode-bg: rgba(18, 18, 18, 0.7);
 }
 
 /* --- Light Theme Variable Overrides --- */
@@ -51,6 +52,7 @@ html[data-theme="light"] {
     --color-text-secondary: #616161;
     --color-border: #bdbdbd;
 	--color-warning: #f25b01;
+	--lightbox-view-mode-bg: rgba(224, 224, 224, 0.7);
 }
 
 body {
@@ -329,7 +331,7 @@ form.search-form-index button:hover { background-color: var(--color-accent-hover
     max-height: 250px; overflow-y: auto;
 }
 .preview-thumb-wrapper { position: relative; }
-.preview-thumb { width: 105px; height: 105px; object-fit: cover; border: 1px solid var(--color-border); border-radius: var(--border-radius); display: block; }
+.preview-thumb { width: 100px; height: 100px; object-fit: cover; border: 1px solid var(--color-border); border-radius: var(--border-radius); display: block; }
 .preview-remove-btn {
     position: absolute; top: -5px; right: -5px; width: 20px; height: 20px;
     background-color: var(--color-danger); color: white; border: 1px solid var(--color-bg-primary);
@@ -515,7 +517,7 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     width: 350px;
     display: flex;
     flex-direction: column;
-    background: rgba(18, 18, 18, 0.85);
+    background: var(--lightbox-view-mode-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
     padding: 1rem;
