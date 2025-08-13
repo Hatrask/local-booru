@@ -176,6 +176,8 @@ function createGalleryManager(options) {
             }
         },
         /** Returns the current page number. */
-        getCurrentPage: () => currentPage
+        getCurrentPage: () => currentPage,
+        /** Returns true if there are more pages available. */
+        getHasMorePages: () => hasMorePages
     };
 }

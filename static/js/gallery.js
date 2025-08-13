@@ -221,9 +221,20 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     async function navigateLightbox(direction) {
         const newIndex = currentImageIndex + direction;
+
+        // If the next image is on the current page, just open it.
         if (newIndex >= 0 && newIndex < currentImages.length) {
             openLightbox(newIndex); // Re-opens lightbox for the new image
             return;
+        }
+
+        // If we're at an edge, we need to check if we can load another page
+        // before showing the loader. This prevents the loader from getting stuck.
+        if (direction === 1 && !galleryManager.getHasMorePages()) {
+            return; // At the very end of the gallery, do nothing.
+        }
+        if (direction === -1 && galleryManager.getCurrentPage() <= 1) {
+            return; // At the very beginning of the gallery, do nothing.
         }
 
         // We need to load a new page. Set the direction and let the manager handle it.
