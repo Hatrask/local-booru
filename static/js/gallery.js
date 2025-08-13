@@ -238,22 +238,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /**
-     * A helper function for lightbox navigation that loads the next page of images.
-     * @deprecated This function is now fully replaced by `navigateLightbox`.
-     */
-    async function loadNextPageInLightbox() {
-        // This logic is now handled by navigateLightbox. This function is kept for historical reference but is not called.
-    }
-
-    /**
-     * A helper function for lightbox navigation that loads the previous page of images.
-     * @deprecated This function is now fully replaced by `navigateLightbox`.
-     */
-    async function loadPrevPageInLightbox() {
-        // This logic is now handled by navigateLightbox. This function is kept for historical reference but is not called.
-    }
-
     function renderTagCloudInHelper(tags, container) {
         container.innerHTML = '';
         if (!tags || tags.length === 0) {
@@ -452,8 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // --- Lightbox is CLOSED ---
         else {
-            if (e.target.matches('input, textarea')) return;
-
             if (e.key.toLowerCase() === 't') {
                 isTooltipModeEnabled = !isTooltipModeEnabled;
                 localStorage.setItem(TOOLTIP_MODE_KEY, isTooltipModeEnabled);
