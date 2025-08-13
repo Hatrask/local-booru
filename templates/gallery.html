@@ -86,11 +86,13 @@
 
     <div id="tag-tooltip" class="thumb-tooltip"></div>
 
-<script src="/static/js/notifications.js"></script>
-<script src="/static/js/autocomplete.js"></script>
+	<script src="/static/js/ui_helpers.js"></script>
+	<script src="/static/js/saved_searches_manager.js"></script>
+	<script src="/static/js/autocomplete.js"></script>
+	<script src="/static/js/notifications.js"></script>
 
-<script>{% raw %}
-document.addEventListener('DOMContentLoaded', () => {
+	<script>{% raw %}
+	document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. CONFIGURATION & CONSTANTS ---
     const IMAGES_PER_PAGE = 42;
