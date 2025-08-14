@@ -159,83 +159,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. CORE LOGIC (File Processing & Uploading) ---
 
-    /**
-     * Asynchronously processes files from user input or drag-and-drop. It handles
-     * individual files, multiple files, and recursively traverses directories.
-     * @param {FileList | DataTransferItemList} items The list of items to process.
-     */
-    async function processItems(items) {
-        if (isProcessingFiles || isUploading) return;
-        isProcessingFiles = true;
-        updateUIVisuals();
-        let fileLimitBreached = false;
+	/**
+	 * Asynchronously processes files from user input or drag-and-drop. It handles
+	 * individual files, multiple files, and recursively traverses directories.
+	 * @param {FileList | DataTransferItemList} items The list of items to process.
+	 */
+	async function processItems(items) {
+		if (isProcessingFiles || isUploading) return;
+		isProcessingFiles = true;
+		updateUIVisuals();
+		let fileLimitBreached = false;
 
-        try {
-            // Adds a single valid image file to the queue if the limit has not been reached.
-            const addFileToQueue = async (file) => { // Now async
-                if (queuedFiles.length >= MAX_FILES) {
-                    fileLimitBreached = true;
-                    return false; // Signal to stop processing
-                }
-                if (file.type.startsWith('image/') && !queuedFiles.some(f => f.name === file.name && f.size === file.size)) {
-                    queuedFiles.push(file);
-                    // Await the thumbnail creation before moving to the next file.
-                    // This prevents the browser from being overwhelmed by creating many
-                    // thumbnails at the exact same time.
-                    await createAndAppendPreview(file);
-                }
-                return true; // Signal to continue
-            };
+		try {
+			// Adds a single valid image file to the queue if the limit has not been reached.
+			const addFileToQueue = async (file) => { // Now async
+				if (queuedFiles.length >= MAX_FILES) {
+					fileLimitBreached = true;
+					return false; // Signal to stop processing
+				}
+				if (file.type.startsWith('image/') && !queuedFiles.some(f => f.name === file.name && f.size === file.size)) {
+					queuedFiles.push(file);
+					// Await the thumbnail creation before moving to the next file.
+					// This prevents the browser from being overwhelmed by creating many
+					// thumbnails at the exact same time.
+					await createAndAppendPreview(file);
+				}
+				return true; // Signal to continue
+			};
 
-            // Recursively reads entries from a directory, handling the paginated nature of the API.
-            const traverseDirectory = async (entry) => {
-                if (fileLimitBreached) return;
-                const reader = entry.createReader();
-                let entries;
-                do {
-                    entries = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
-                    for (const innerEntry of entries) {
-                        if (queuedFiles.length >= MAX_FILES) {
-                            fileLimitBreached = true;
-                            break;
-                        }
-                        if (innerEntry.isDirectory) {
-                            await traverseDirectory(innerEntry);
-                        } else if (innerEntry.isFile) {
-                            try {
-                                const file = await new Promise((res, rej) => innerEntry.file(res, rej));
-                                await addFileToQueue(file); // Await here
-                            } catch (err) { console.warn("Could not read file:", innerEntry.name, err); }
-                        }
-                    }
-                } while (entries.length > 0 && !fileLimitBreached);
-            };
+			// Recursively reads entries from a directory, handling the paginated nature of the API.
+			const traverseDirectory = async (entry) => {
+				if (fileLimitBreached) return;
+				const reader = entry.createReader();
+				let entries;
+				do {
+					entries = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+					for (const innerEntry of entries) {
+						if (queuedFiles.length >= MAX_FILES) {
+							fileLimitBreached = true;
+							break;
+						}
+						if (innerEntry.isDirectory) {
+							await traverseDirectory(innerEntry);
+						} else if (innerEntry.isFile) {
+							try {
+								const file = await new Promise((res, rej) => innerEntry.file(res, rej));
+								await addFileToQueue(file); // Await here
+							} catch (err) { console.warn("Could not read file:", innerEntry.name, err); }
+						}
+					}
+				} while (entries.length > 0 && !fileLimitBreached);
+			};
 
-            // Loop through all items provided by the input or drop event.
-            for (const item of (items instanceof DataTransferItemList ? Array.from(items) : Array.from(items))) {
-                if (fileLimitBreached) break;
-                const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
-                
-                if (entry?.isDirectory) {
-                    await traverseDirectory(entry);
-                } else if (entry?.isFile) {
-                    const file = await new Promise((res, rej) => entry.file(res, rej));
-                    await addFileToQueue(file); // Await here
-                } else if (item instanceof File) {
-                    await addFileToQueue(item); // Await here
-                }
-            }
-        } catch (error) {
-            console.error("Error processing files:", error);
-            showToast("An error occurred while processing items.", "error");
-        } finally {
-            isProcessingFiles = false;
-            if (fileLimitBreached) {
-                showToast(`File limit of ${MAX_FILES} reached. Some files were not added.`, 'info');
-            }
-            updateUIVisuals();
-        }
-    }
+			// The DataTransferItemList from a drop event becomes invalid after the first `await`.
+			// We must synchronously extract all file/directory entries into a stable array
+			// *before* starting any asynchronous processing.
+			const itemsToProcess = [];
+			if (items instanceof DataTransferItemList) {
+				for (const item of items) {
+					// item.webkitGetAsEntry() is a synchronous call.
+					const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
+					if (entry) {
+						itemsToProcess.push(entry);
+					}
+				}
+			} else {
+				// A FileList from an <input> is already a stable list.
+				itemsToProcess.push(...Array.from(items));
+			}
+
+			// Now, asynchronously loop over the stable `itemsToProcess` array.
+			for (const itemOrEntry of itemsToProcess) {
+				if (fileLimitBreached) break;
+
+				if (itemOrEntry.isDirectory) {
+					await traverseDirectory(itemOrEntry);
+				} else if (itemOrEntry.isFile) {
+					const file = await new Promise((res, rej) => itemOrEntry.file(res, rej));
+					await addFileToQueue(file);
+				} else if (itemOrEntry instanceof File) {
+					await addFileToQueue(itemOrEntry);
+				}
+			}
+
+		} catch (error) {
+			console.error("Error processing files:", error);
+			showToast("An error occurred while processing items.", "error");
+		} finally {
+			isProcessingFiles = false;
+			if (fileLimitBreached) {
+				showToast(`File limit of ${MAX_FILES} reached. Some files were not added.`, 'info');
+			}
+			updateUIVisuals();
+		}
+	}
 
     /**
      * Handles the form submission by building FormData from the queue and POSTing it.
