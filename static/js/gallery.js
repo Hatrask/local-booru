@@ -11,9 +11,9 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. CONFIGURATION & CONSTANTS ---
-    const IMAGES_PER_PAGE = 98;
+    const IMAGES_PER_PAGE = 49;
     const DEFAULT_THUMB_SIZE = '250';
-    const CANVAS_THUMBNAIL_SIZE = 600;
+    const CANVAS_THUMBNAIL_SIZE = 850;
     const TOOLTIP_SHOW_DELAY = 100;
     const TOOLTIP_HIDE_DELAY = 50;
     const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled';

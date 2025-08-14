@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. CONFIGURATION & STATE ---
     const MAX_FILES = 500;
-    const THUMBNAIL_SIZE = 100;
+    const THUMBNAIL_SIZE = 200;
     let queuedFiles = [];
     // State flags prevent concurrent operations (e.g., adding files while an upload is in progress)
     let isProcessingFiles = false;
