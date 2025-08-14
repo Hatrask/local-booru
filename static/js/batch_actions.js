@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. CONFIGURATION & DOM REFERENCES ---
     const IMAGES_PER_PAGE = 49;
-    const CANVAS_THUMBNAIL_SIZE = 600;
     const galleryGrid = document.getElementById('gallery-grid');
     const paginationDiv = document.getElementById('pagination');
     const selectedCountSpan = document.getElementById('selected-count');
@@ -33,50 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. RENDERER FOR THE SHARED MANAGER ---
 
     /**
-     * Helper function to generate a thumbnail from an image URL using a canvas.
-     * @param {string} imageUrl - The URL of the full-resolution image.
-     * @returns {Promise<string>} A promise that resolves with a Data URL of the thumbnail.
-     */
-    function generateThumbnailFromUrl(imageUrl) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous";
-
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > CANVAS_THUMBNAIL_SIZE) {
-                        height *= CANVAS_THUMBNAIL_SIZE / width;
-                        width = CANVAS_THUMBNAIL_SIZE;
-                    }
-                } else {
-                    if (height > CANVAS_THUMBNAIL_SIZE) {
-                        width *= CANVAS_THUMBNAIL_SIZE / height;
-                        height = CANVAS_THUMBNAIL_SIZE;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.9));
-            };
-
-            img.onerror = (err) => {
-                console.error("Failed to load image for thumbnailing:", imageUrl, err);
-                reject(err);
-            };
-
-            img.src = imageUrl;
-        });
-    }
-
-    /**
      * Creates a thumbnail element for the batch actions page. This is the key
      * callback passed to the shared gallery manager.
      * @param {object} img - The image object from the API.
@@ -91,24 +46,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const imgEl = document.createElement('img');
-        imgEl.alt = `Image ${img.id}`;
-        // Use a tiny placeholder to render the layout immediately.
-        imgEl.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
         
-        // Asynchronously generate and apply the real thumbnail.
-        const originalImageUrl = `/media/images/${img.filename}`;
-        generateThumbnailFromUrl(originalImageUrl)
-            .then(thumbnailUrl => {
-                imgEl.src = thumbnailUrl;
-            })
-            .catch(() => {
-                thumb.classList.add('thumb-error');
-                imgEl.alt = `Failed to load thumbnail for Image ${img.id}`;
-            });
+        // Construct the direct URL to the static thumbnail file.
+        // We get the base name (without extension) and append .jpg.
+        const baseFilename = img.filename.substring(0, img.filename.lastIndexOf('.'));
+        imgEl.src = `/media/thumbnails/${baseFilename}.jpg`;
+        
+        imgEl.alt = `Image ${img.id}`;
+        // Use native browser lazy loading for a free performance boost.
+        imgEl.loading = 'lazy';
 
         // renderTagPills is provided by ui_helpers.js
         const tagsHTML = `<div class="tag-pills-container">${renderTagPills(img.tags)}</div>`;
-        
+
+		// If the thumbnail fails to load, replace it with a placeholder SVG.
+		imgEl.onerror = function() {
+			this.onerror = null;
+			this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e0e0e0'/%3E%3Ctext x='50' y='55' font-family='sans-serif' font-size='12' fill='%239e9e9e' text-anchor='middle'%3EError%3C/text%3E%3C/svg%3E";
+		};
+
         // Construct the element by appending, not using innerHTML, to keep the live image element.
         thumb.appendChild(imgEl);
         thumb.insertAdjacentHTML('beforeend', `<div class="tags">${tagsHTML}</div>`);

@@ -8,6 +8,7 @@ from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict, IO
+from PIL import Image as PILImage
 
 # --- Path setup for PyInstaller ---
 if getattr(sys, 'frozen', False):
@@ -30,6 +31,7 @@ def resource_path(relative_path):
 
 # --- Constants ---
 MEDIA_DIR = os.path.join(application_path, "media")
+THUMBNAIL_DIR = os.path.join(MEDIA_DIR, "thumbnails")
 DATABASE_URL = f"sqlite:///{os.path.join(application_path, 'database.db')}"
 UNDO_STATE_FILE = os.path.join(application_path, "undo_state.json")
 VALID_CATEGORIES = {"general", "artist", "character", "copyright", "metadata"}
@@ -47,11 +49,13 @@ def check_and_perform_reset():
     print("INFO:     '.reset_pending' flag found. Performing factory reset...")
     db_file = DATABASE_URL.replace("sqlite:///", "")
     images_dir = os.path.join(MEDIA_DIR, "images")
+    thumbnails_dir = THUMBNAIL_DIR
 
     items_to_delete = [
         {"path": db_file, "type": "file"},
         {"path": UNDO_STATE_FILE, "type": "file"},
         {"path": images_dir, "type": "directory"},
+        {"path": thumbnails_dir, "type": "directory"},
     ]
 
     for item in items_to_delete:
@@ -67,7 +71,8 @@ def check_and_perform_reset():
                 print(f"ERROR:    Could not delete {path}. Reason: {e}")
     
     os.makedirs(images_dir, exist_ok=True)
-    print("INFO:     - Recreated media directory.")
+    os.makedirs(thumbnails_dir, exist_ok=True)
+    print("INFO:     - Recreated media directories.")
     
     os.remove(reset_flag_file)
     print("INFO:     Factory reset complete. Application will now start normally.")
@@ -91,14 +96,16 @@ check_and_perform_reset() # Factory reset call
 app = FastAPI(
     title="local-booru",
     description="A self-hosted image gallery with advanced tagging.",
-    version="2.0.0-pre1",
+    version="2.0.0-pre2",
 )
 
 # --- Static File and Template Configuration ---
 os.makedirs(os.path.join(MEDIA_DIR, "images"), exist_ok=True)
+os.makedirs(THUMBNAIL_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=resource_path("static")), name="static")
 app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
+app.mount("/media/thumbnails", StaticFiles(directory=THUMBNAIL_DIR), name="thumbnails")
 templates = Jinja2Templates(directory=resource_path("templates"))
 
 
@@ -211,6 +218,18 @@ def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
             
     return tags_to_process
 
+def create_thumbnail(original_path: str, thumbnail_path: str, size: tuple = (600, 600)):
+    """Creates a thumbnail for an image, preserving aspect ratio."""
+    try:
+        with PILImage.open(original_path) as img:
+            # Convert to RGB to avoid issues with paletted images (like GIFs) or PNGs with alpha
+            img = img.convert("RGB") 
+            img.thumbnail(size)
+            img.save(thumbnail_path, "JPEG", quality=85)
+    except Exception as e:
+        print(f"ERROR: Could not create thumbnail for {original_path}. Reason: {e}")
+
+
 # --- Frontend Page Routes ---
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, db: Session = Depends(get_db)):
@@ -289,6 +308,11 @@ def upload_images(
             file.file.seek(0)
             with open(path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
+
+            # After saving the original, create its thumbnail
+            thumbnail_filename = f"{os.path.splitext(unique_filename)[0]}.jpg"
+            thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+            create_thumbnail(path, thumbnail_path)
 
             image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
             db.add(image)
@@ -437,8 +461,15 @@ def api_batch_delete_images(image_ids: List[int] = Form(...), db: Session = Depe
     images_to_delete = db.query(Image).filter(Image.id.in_(image_ids)).all()
     deleted_count = 0
     for image in images_to_delete:
+        # Delete original image
         image_path = os.path.join(MEDIA_DIR, "images", image.filename)
         if os.path.exists(image_path): os.remove(image_path)
+        
+        # Delete thumbnail
+        thumbnail_filename = f"{os.path.splitext(image.filename)[0]}.jpg"
+        thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+        if os.path.exists(thumbnail_path): os.remove(thumbnail_path)
+            
         db.delete(image)
         deleted_count += 1
     db.commit()
@@ -447,14 +478,21 @@ def api_batch_delete_images(image_ids: List[int] = Form(...), db: Session = Depe
 
 @app.delete("/api/image/{image_id}")
 def api_delete_image(image_id: int, db: Session = Depends(get_db)):
-    """Deletes a single image by its ID."""
+    """Deletes a single image and its thumbnail by its ID."""
     image = db.query(Image).filter(Image.id == image_id).first()
     if not image:
         raise HTTPException(status_code=404, detail="Image not found.")
 
+    # Delete original image
     image_path = os.path.join(MEDIA_DIR, "images", image.filename)
     if os.path.exists(image_path):
         os.remove(image_path)
+
+    # Delete thumbnail
+    thumbnail_filename = f"{os.path.splitext(image.filename)[0]}.jpg"
+    thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+    if os.path.exists(thumbnail_path):
+        os.remove(thumbnail_path)
 
     db.delete(image)
     db.commit()
@@ -744,12 +782,8 @@ def api_schedule_factory_reset():
 async def api_import_collection(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
     Imports a collection from a previously exported .zip file.
-    
-    This endpoint will:
-    1. Extract the uploaded zip to a temporary directory.
-    2. Read `metadata.json`.
-    3. Iterate through the images, skipping any that already exist (by SHA256 hash).
-    4. Copy the new image files to the `media/images` directory.
+    ...
+    4. For each new image, it copies the image file AND generates a new thumbnail.
     5. Add the new images and their tags to the database.
     """
     if not file.filename.endswith('.zip'):
@@ -809,11 +843,16 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
             
             shutil.copy(source_image_path, dest_image_path)
             
-            # 4. Get or create tags for the new image.
+            # 4. Generate thumbnail for the newly imported image.
+            thumbnail_filename = f"{os.path.splitext(image_data['filename'])[0]}.jpg"
+            thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+            create_thumbnail(dest_image_path, thumbnail_path)
+            
+            # 5. Get or create tags for the new image.
             raw_tags = set(image_data.get('tags', []))
             tags_for_image = get_or_create_tags(db, raw_tags)
             
-            # 5. Create the new Image database record.
+            # 6. Create the new Image database record.
             new_image = Image(
                 filename=image_data['filename'],
                 sha256_hash=image_data['sha256_hash'],

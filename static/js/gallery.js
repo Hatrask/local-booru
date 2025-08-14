@@ -67,90 +67,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. RENDERER FOR THE SHARED MANAGER ---
     
-    /**
-     * Helper function to generate a thumbnail from an image URL using a canvas.
-     * @param {string} imageUrl - The URL of the full-resolution image.
-     * @returns {Promise<string>} A promise that resolves with a Data URL of the thumbnail.
-     */
-    function generateThumbnailFromUrl(imageUrl) {
-        return new Promise((resolve, reject) => {
-            const img = new Image();
-            // Important for cross-origin images if your media is on a different domain/port.
-            img.crossOrigin = "Anonymous";
+	/**
+	 * Creates a thumbnail element for the main gallery. This function is passed
+	 * as a callback to the shared gallery manager.
+	 * @param {object} img - The image object from the API.
+	 * @param {number} index - The index of the image on the current page.
+	 * @returns {HTMLElement} The placeholder thumbnail element.
+	 */
+	function renderGalleryItem(img, index) {
+		const thumb = document.createElement('div');
+		thumb.className = 'thumb';
+		thumb.dataset.index = index;
+		
+		const imgEl = document.createElement('img');
+		
+		// Construct the direct URL to the static thumbnail file.
+		// We get the base name and change the extension to .jpg.
+		const baseFilename = img.filename.substring(0, img.filename.lastIndexOf('.'));
+		imgEl.src = `/media/thumbnails/${baseFilename}.jpg`;
+		
+		imgEl.alt = `Image ${img.id}`;
+		imgEl.loading = 'lazy'; // Use native browser lazy loading for extra performance.
 
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
+		// If the thumbnail fails to load, replace it with a placeholder SVG.
+		imgEl.onerror = function() {
+			this.onerror = null;
+			this.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e0e0e0'/%3E%3Ctext x='50' y='55' font-family='sans-serif' font-size='12' fill='%239e9e9e' text-anchor='middle'%3EError%3C/text%3E%3C/svg%3E";
+		};
 
-                let width = img.width;
-                let height = img.height;
-
-                // Calculate the new dimensions to fit within the thumbnail size.
-                if (width > height) {
-                    if (width > CANVAS_THUMBNAIL_SIZE) {
-                        height *= CANVAS_THUMBNAIL_SIZE / width;
-                        width = CANVAS_THUMBNAIL_SIZE;
-                    }
-                } else {
-                    if (height > CANVAS_THUMBNAIL_SIZE) {
-                        width *= CANVAS_THUMBNAIL_SIZE / height;
-                        height = CANVAS_THUMBNAIL_SIZE;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Export the canvas as a lightweight JPEG Data URL.
-                resolve(canvas.toDataURL('image/jpeg', 0.9));
-            };
-
-            img.onerror = (err) => {
-                console.error("Failed to load image for thumbnailing:", imageUrl, err);
-                reject(err);
-            };
-
-            img.src = imageUrl;
-        });
-    }
-
-    /**
-     * Creates a thumbnail element for the main gallery. This function is passed
-     * as a callback to the shared gallery manager.
-     * @param {object} img - The image object from the API.
-     * @param {number} index - The index of the image on the current page.
-     * @returns {HTMLElement} The placeholder thumbnail element.
-     */
-    function renderGalleryItem(img, index) {
-        const thumb = document.createElement('div');
-        thumb.className = 'thumb';
-        thumb.dataset.index = index;
-        
-        const imgEl = document.createElement('img');
-        imgEl.alt = `Image ${img.id}`;
-        // Set a placeholder to ensure the layout is painted immediately.
-        imgEl.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        
-        // The original image URL is used to generate the thumbnail.
-        const originalImageUrl = `/media/images/${img.filename}`;
-        
-        // Asynchronously generate and apply the real thumbnail.
-        generateThumbnailFromUrl(originalImageUrl)
-            .then(thumbnailUrl => {
-                imgEl.src = thumbnailUrl;
-            })
-            .catch(() => {
-                // If thumbnail generation fails, add a class to visually indicate an error.
-                thumb.classList.add('thumb-error');
-                imgEl.alt = `Failed to load thumbnail for Image ${img.id}`;
-            });
-        
-        thumb.appendChild(imgEl);
-        thumb.addEventListener('click', () => openLightbox(index));
-        // Return the placeholder immediately.
-        return thumb;
-    }
+		thumb.appendChild(imgEl);
+		thumb.addEventListener('click', () => openLightbox(index));
+		
+		return thumb;
+	}
 
 
     // --- 5. PAGE-SPECIFIC LOGIC (LIGHTBOX, TOOLTIPS, etc.) ---
