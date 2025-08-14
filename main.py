@@ -1,4 +1,4 @@
-import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile, tempfile
+import shutil, os, uuid, json, hashlib, sqlite3, io, zipfile, tempfile, sys
 from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, Form, Request, Depends, Query, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, StreamingResponse
@@ -9,9 +9,29 @@ from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Dict
 
+# --- Path setup for PyInstaller ---
+if getattr(sys, 'frozen', False):
+    # If the application is run as a bundle, the PyInstaller bootloader
+    # extends the sys module by a flag frozen=True and sets the app 
+    # path into variable _MEIPASS'.
+    application_path = os.path.dirname(sys.executable)
+else:
+    application_path = os.path.dirname(os.path.abspath(__file__))
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 # --- Constants ---
-DATABASE_URL = "sqlite:///database.db"
-UNDO_STATE_FILE = "undo_state.json"
+MEDIA_DIR = os.path.join(application_path, "media")
+DATABASE_URL = f"sqlite:///{os.path.join(application_path, 'database.db')}"
+UNDO_STATE_FILE = os.path.join(application_path, "undo_state.json")
 VALID_CATEGORIES = {"general", "artist", "character", "copyright", "metadata"}
 
 # --- Reset Function ---
@@ -20,13 +40,13 @@ def check_and_perform_reset():
     Checks for a `.reset_pending` flag file on startup. If found, it performs
     a factory reset and then removes the flag. This runs before the server starts.
     """
-    reset_flag_file = ".reset_pending"
+    reset_flag_file = os.path.join(application_path, ".reset_pending")
     if not os.path.exists(reset_flag_file):
         return
 
     print("INFO:     '.reset_pending' flag found. Performing factory reset...")
     db_file = DATABASE_URL.replace("sqlite:///", "")
-    images_dir = "media/images"
+    images_dir = os.path.join(MEDIA_DIR, "images")
 
     items_to_delete = [
         {"path": db_file, "type": "file"},
@@ -75,10 +95,12 @@ app = FastAPI(
 )
 
 # --- Static File and Template Configuration ---
-app.mount("/static", StaticFiles(directory="static"), name="static")
-app.mount("/media", StaticFiles(directory="media"), name="media")
-templates = Jinja2Templates(directory="templates")
-os.makedirs("media/images", exist_ok=True)
+os.makedirs(os.path.join(MEDIA_DIR, "images"), exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=resource_path("static")), name="static")
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
+templates = Jinja2Templates(directory=resource_path("templates"))
+
 
 # --- CORS Middleware ---
 app.add_middleware(
@@ -250,7 +272,7 @@ def upload_images(
             extension = "jpg"
             
         unique_filename = f"{uuid.uuid4().hex}.{extension}"
-        path = f"media/images/{unique_filename}"
+        path = os.path.join(MEDIA_DIR, "images", unique_filename)
         
         with open(path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -399,7 +421,7 @@ def api_batch_delete_images(image_ids: List[int] = Form(...), db: Session = Depe
     images_to_delete = db.query(Image).filter(Image.id.in_(image_ids)).all()
     deleted_count = 0
     for image in images_to_delete:
-        image_path = f"media/images/{image.filename}"
+        image_path = os.path.join(MEDIA_DIR, "images", image.filename)
         if os.path.exists(image_path): os.remove(image_path)
         db.delete(image)
         deleted_count += 1
@@ -414,7 +436,7 @@ def api_delete_image(image_id: int, db: Session = Depends(get_db)):
     if not image:
         raise HTTPException(status_code=404, detail="Image not found.")
 
-    image_path = f"media/images/{image.filename}"
+    image_path = os.path.join(MEDIA_DIR, "images", image.filename)
     if os.path.exists(image_path):
         os.remove(image_path)
 
@@ -650,7 +672,7 @@ async def api_export_collection(db: Session = Depends(get_db)):
         with zipfile.ZipFile(temp_file, 'w', zipfile.ZIP_STORED) as zipf:
             zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
             
-            images_dir = "media/images"
+            images_dir = os.path.join(MEDIA_DIR, "images")
             for image_meta in images_metadata:
                 source_path = os.path.join(images_dir, image_meta["filename"])
                 archive_path = os.path.join("images", image_meta["filename"])
@@ -695,7 +717,7 @@ def api_schedule_factory_reset():
     the next time the application is started.
     """
     try:
-        with open(".reset_pending", "w") as f:
+        with open(os.path.join(application_path, ".reset_pending"), "w") as f:
             f.write("reset")
     except IOError as e:
         raise HTTPException(status_code=500, detail=f"Could not schedule reset. Reason: {e}")
@@ -764,7 +786,7 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
             
             # 3. Copy the physical image file.
             source_image_path = os.path.join(images_dir_path, image_data['filename'])
-            dest_image_path = os.path.join("media/images", image_data['filename'])
+            dest_image_path = os.path.join(MEDIA_DIR, "images", image_data['filename'])
             
             if not os.path.exists(source_image_path):
                 continue # Skip if the image file is missing from the archive
@@ -795,5 +817,26 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
 
 if __name__ == "__main__":
     import uvicorn
-    # Change host to 127.0.0.1 if you don't want other devices in your LAN being able to access this app
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    
+    # This check is crucial for distinguishing between development and packaged mode
+    is_packaged = getattr(sys, 'frozen', False)
+
+    if is_packaged:
+        # Running in a PyInstaller bundle.
+        # We must pass the app object directly and disable reloading.
+        uvicorn.run(
+            app,  # Pass the FastAPI app object directly
+            host="0.0.0.0",
+            port=8000
+            # reload is False by default
+        )
+    else:
+        # Running as a standard Python script.
+        # Use the string format to allow the reloader to work.
+        # Change host to 127.0.0.1 if you don't want other devices in your LAN being able to access this app
+        uvicorn.run(
+            "main:app",
+            host="0.0.0.0",
+            port=8000,
+            reload=True
+        )
