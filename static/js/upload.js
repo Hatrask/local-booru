@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. CONFIGURATION & STATE ---
     const MAX_FILES = 500;
+    const THUMBNAIL_SIZE = 100;
     let queuedFiles = [];
     // State flags prevent concurrent operations (e.g., adding files while an upload is in progress)
     let isProcessingFiles = false;
@@ -58,52 +59,95 @@ document.addEventListener('DOMContentLoaded', () => {
      * Generates and appends a preview thumbnail for a given file.
      * @param {File} file The file to create a preview for.
      */
-    function createAndAppendPreview(file) {
+    async function createAndAppendPreview(file) {
         const wrapper = document.createElement('div');
         wrapper.className = 'preview-thumb-wrapper';
 
-        const img = document.createElement('img');
-        // Create a memory-efficient object URL instead of reading the whole file into memory.
-        const objectUrl = URL.createObjectURL(file);
-        img.src = objectUrl;
-        img.className = 'preview-thumb';
-        // Store the URL on the element so we can revoke it later to prevent memory leaks.
-        img.dataset.objectUrl = objectUrl;
+        const thumbImg = document.createElement('img');
+        thumbImg.className = 'preview-thumb';
+
+        // Generate the actual thumbnail using a canvas.
+        try {
+            const thumbnailUrl = await generateThumbnail(file);
+            thumbImg.src = thumbnailUrl;
+        } catch (error) {
+            console.error("Could not generate thumbnail for", file.name, error);
+            // Fallback: use a generic icon or leave src empty
+            thumbImg.src = ''; // Or a path to a generic file icon
+            thumbImg.alt = 'Preview not available';
+        }
 
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'preview-remove-btn';
         removeBtn.innerHTML = '&times;';
         removeBtn.title = 'Remove ' + file.name;
-
         removeBtn.onclick = () => {
-            // Find the corresponding image and revoke its object URL to free up memory.
-            const imgToRemove = wrapper.querySelector('img');
-            if (imgToRemove && imgToRemove.dataset.objectUrl) {
-                URL.revokeObjectURL(imgToRemove.dataset.objectUrl);
-            }
             wrapper.remove();
             queuedFiles = queuedFiles.filter(f => f !== file);
             updateUIVisuals();
         };
 
-        wrapper.appendChild(img);
+        wrapper.appendChild(thumbImg);
         wrapper.appendChild(removeBtn);
         previewContainer.appendChild(wrapper);
     }
-
+    
+    /**
+     * Helper function to generate a thumbnail using a canvas.
+     * @param {File} file - The image file.
+     * @returns {Promise<string>} A promise that resolves with a Data URL of the thumbnail.
+     */
+    function generateThumbnail(file) {
+        return new Promise((resolve, reject) => {
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+    
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+    
+                let width = img.width;
+                let height = img.height;
+    
+                if (width > height) {
+                    if (width > THUMBNAIL_SIZE) {
+                        height *= THUMBNAIL_SIZE / width;
+                        width = THUMBNAIL_SIZE;
+                    }
+                } else {
+                    if (height > THUMBNAIL_SIZE) {
+                        width *= THUMBNAIL_SIZE / height;
+                        height = THUMBNAIL_SIZE;
+                    }
+                }
+    
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+    
+                // Get the thumbnail as a JPEG Data URL. It's much smaller than PNG.
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                
+                // CRITICAL: Revoke the object URL for the large image immediately 
+                // after generating the thumbnail to free up memory.
+                URL.revokeObjectURL(objectUrl);
+                resolve(dataUrl);
+            };
+    
+            img.onerror = (err) => {
+                URL.revokeObjectURL(objectUrl);
+                reject(err);
+            };
+    
+            img.src = objectUrl;
+        });
+    }
 
     /**
      * Clears the file queue and resets all related UI elements to their initial state.
      */
     function clearQueue() {
-        // Revoke all created object URLs before clearing the HTML.
-        previewContainer.querySelectorAll('.preview-thumb').forEach(img => {
-            if (img.dataset.objectUrl) {
-                URL.revokeObjectURL(img.dataset.objectUrl);
-            }
-        });
-
         queuedFiles = [];
         previewContainer.innerHTML = '';
         uploadForm.reset();
@@ -128,15 +172,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // Adds a single valid image file to the queue if the limit has not been reached.
-            const addFileToQueue = (file) => {
+            const addFileToQueue = async (file) => { // Now async
                 if (queuedFiles.length >= MAX_FILES) {
                     fileLimitBreached = true;
                     return false; // Signal to stop processing
                 }
-                // Add if it's an image and not already a duplicate in the queue
                 if (file.type.startsWith('image/') && !queuedFiles.some(f => f.name === file.name && f.size === file.size)) {
                     queuedFiles.push(file);
-                    createAndAppendPreview(file);
+                    // Await the thumbnail creation before moving to the next file.
+                    // This prevents the browser from being overwhelmed by creating many
+                    // thumbnails at the exact same time.
+                    await createAndAppendPreview(file);
                 }
                 return true; // Signal to continue
             };
@@ -158,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else if (innerEntry.isFile) {
                             try {
                                 const file = await new Promise((res, rej) => innerEntry.file(res, rej));
-                                addFileToQueue(file);
+                                await addFileToQueue(file); // Await here
                             } catch (err) { console.warn("Could not read file:", innerEntry.name, err); }
                         }
                     }
@@ -169,22 +215,20 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const item of (items instanceof DataTransferItemList ? Array.from(items) : Array.from(items))) {
                 if (fileLimitBreached) break;
                 const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
-
+                
                 if (entry?.isDirectory) {
                     await traverseDirectory(entry);
                 } else if (entry?.isFile) {
                     const file = await new Promise((res, rej) => entry.file(res, rej));
-                    addFileToQueue(file);
+                    await addFileToQueue(file); // Await here
                 } else if (item instanceof File) {
-                    addFileToQueue(item);
+                    await addFileToQueue(item); // Await here
                 }
             }
         } catch (error) {
             console.error("Error processing files:", error);
             showToast("An error occurred while processing items.", "error");
         } finally {
-            // This block is crucial. It guarantees the processing state is reset
-            // and the UI is updated, even if errors occurred.
             isProcessingFiles = false;
             if (fileLimitBreached) {
                 showToast(`File limit of ${MAX_FILES} reached. Some files were not added.`, 'info');
@@ -228,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadStatusDiv.textContent = 'An unexpected network error occurred.';
             uploadStatusDiv.style.color = 'var(--color-danger)';
         } finally {
-            // Guarantees the upload state is reset, enabling the user to perform another upload.
             isUploading = false;
             updateUIVisuals();
         }
@@ -243,19 +286,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // This function is expected to be defined in `autocomplete.js`
         setupTagAutocomplete(tagInput, suggestionsBox);
 
-        // Wire up the user-facing links to trigger the hidden file/folder inputs.
         selectFilesLink.addEventListener('click', (e) => { e.preventDefault(); fileInput.click(); });
         selectFolderLink.addEventListener('click', (e) => { e.preventDefault(); folderInput.click(); });
         
-        // Add change listeners to both hidden inputs. We reset the value after processing
-        // to ensure the 'change' event fires even if the same file/folder is selected again.
         fileInput.addEventListener('change', (e) => { processItems(e.target.files); e.target.value = null; });
         folderInput.addEventListener('change', (e) => { processItems(e.target.files); e.target.value = null; });
         
         uploadForm.addEventListener('submit', handleFormSubmit);
         clearQueueBtn.addEventListener('click', clearQueue);
 
-        // Setup drag and drop listeners on the main drop zone.
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
         dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); });
         dropZone.addEventListener('drop', (e) => {
@@ -266,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        updateUIVisuals(); // Set the initial state of the buttons.
+        updateUIVisuals();
     }
 
     initialize();

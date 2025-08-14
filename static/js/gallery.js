@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. CONFIGURATION & CONSTANTS ---
     const IMAGES_PER_PAGE = 98;
     const DEFAULT_THUMB_SIZE = '250';
+    const CANVAS_THUMBNAIL_SIZE = 600;
     const TOOLTIP_SHOW_DELAY = 100;
     const TOOLTIP_HIDE_DELAY = 50;
     const TOOLTIP_MODE_KEY = 'localBooru_tooltipModeEnabled';
@@ -35,7 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxLoadingIndicator = document.getElementById('lightbox-loading-indicator');
     
     // Lightbox state-specific elements
-    // Note: lightboxTagsDisplay is now inside lightbox-view-mode-content
     const lightboxViewModeContent = document.getElementById('lightbox-view-mode-content');
     const lightboxImageId = lightboxViewModeContent.querySelector('#lightbox-image-id');
     const lightboxTagsDisplay = lightboxViewModeContent.querySelector('.tag-pills-container');
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 3. STATE MANAGEMENT ---
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q') || "";
-    let currentImages = []; // This will be populated by the gallery manager
+    let currentImages = [];
     let currentImageIndex = -1;
     let showTooltipTimer, hideTooltipTimer;
     let isTooltipModeEnabled = localStorage.getItem(TOOLTIP_MODE_KEY) === 'true';
@@ -62,26 +62,96 @@ document.addEventListener('DOMContentLoaded', () => {
     let searchDebounceTimer;
     let galleryManager;
     let currentPage = parseInt(urlParams.get('page'), 10) || 1;
-    let lightboxNavDirection = 0; // 1 for forward, -1 for backward
-    let actionAfterReload = null; // Used for actions like reopening lightbox after delete
+    let lightboxNavDirection = 0;
+    let actionAfterReload = null;
 
     // --- 4. RENDERER FOR THE SHARED MANAGER ---
+    
+    /**
+     * Helper function to generate a thumbnail from an image URL using a canvas.
+     * @param {string} imageUrl - The URL of the full-resolution image.
+     * @returns {Promise<string>} A promise that resolves with a Data URL of the thumbnail.
+     */
+    function generateThumbnailFromUrl(imageUrl) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            // Important for cross-origin images if your media is on a different domain/port.
+            img.crossOrigin = "Anonymous";
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                let width = img.width;
+                let height = img.height;
+
+                // Calculate the new dimensions to fit within the thumbnail size.
+                if (width > height) {
+                    if (width > CANVAS_THUMBNAIL_SIZE) {
+                        height *= CANVAS_THUMBNAIL_SIZE / width;
+                        width = CANVAS_THUMBNAIL_SIZE;
+                    }
+                } else {
+                    if (height > CANVAS_THUMBNAIL_SIZE) {
+                        width *= CANVAS_THUMBNAIL_SIZE / height;
+                        height = CANVAS_THUMBNAIL_SIZE;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Export the canvas as a lightweight JPEG Data URL.
+                resolve(canvas.toDataURL('image/jpeg', 0.9));
+            };
+
+            img.onerror = (err) => {
+                console.error("Failed to load image for thumbnailing:", imageUrl, err);
+                reject(err);
+            };
+
+            img.src = imageUrl;
+        });
+    }
 
     /**
      * Creates a thumbnail element for the main gallery. This function is passed
      * as a callback to the shared gallery manager.
      * @param {object} img - The image object from the API.
      * @param {number} index - The index of the image on the current page.
-     * @returns {HTMLElement} The created thumbnail element.
+     * @returns {HTMLElement} The placeholder thumbnail element.
      */
     function renderGalleryItem(img, index) {
         const thumb = document.createElement('div');
         thumb.className = 'thumb';
         thumb.dataset.index = index;
-        thumb.innerHTML = `<img src="/media/images/${img.filename}" alt="Image ${img.id}" loading="lazy">`;
+        
+        const imgEl = document.createElement('img');
+        imgEl.alt = `Image ${img.id}`;
+        // Set a placeholder to ensure the layout is painted immediately.
+        imgEl.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        
+        // The original image URL is used to generate the thumbnail.
+        const originalImageUrl = `/media/images/${img.filename}`;
+        
+        // Asynchronously generate and apply the real thumbnail.
+        generateThumbnailFromUrl(originalImageUrl)
+            .then(thumbnailUrl => {
+                imgEl.src = thumbnailUrl;
+            })
+            .catch(() => {
+                // If thumbnail generation fails, add a class to visually indicate an error.
+                thumb.classList.add('thumb-error');
+                imgEl.alt = `Failed to load thumbnail for Image ${img.id}`;
+            });
+        
+        thumb.appendChild(imgEl);
         thumb.addEventListener('click', () => openLightbox(index));
+        // Return the placeholder immediately.
         return thumb;
     }
+
 
     // --- 5. PAGE-SPECIFIC LOGIC (LIGHTBOX, TOOLTIPS, etc.) ---
 
@@ -202,13 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const confirmed = await showConfirmation('Are you sure you want to permanently delete this image? This cannot be undone.');
         if (!confirmed) return;
     
-        // Determine which image to show next. Usually the one before, or the first one if deleting the first.
         const indexToShowAfterDelete = Math.max(0, currentImageIndex - 1);
-    
-        // Set a flag for the onPageLoad callback to handle reopening the lightbox.
         actionAfterReload = { type: 'reopenLightbox', index: indexToShowAfterDelete };
-    
-        // Show loading indicator inside the lightbox while the deletion and reload happens.
         lightboxLoadingIndicator.style.display = 'block';
     
         try {
@@ -216,20 +281,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
             if (response.ok) {
                 showToast('Image deleted successfully.', 'success');
-                // Don't close the lightbox. Reload the gallery.
-                // The onPageLoad callback will handle reopening the lightbox at the correct index.
                 galleryManager.reload(currentPage);
             } else {
                 const result = await response.json();
                 showToast(result.detail || 'Failed to delete image.', 'error');
-                // On failure, hide the loading indicator and reset the action.
                 lightboxLoadingIndicator.style.display = 'none';
                 actionAfterReload = null;
             }
         } catch (error) {
             console.error('Error deleting image:', error);
             showToast('An unexpected error occurred.', 'error');
-            // On error, hide the loading indicator and reset the action.
             lightboxLoadingIndicator.style.display = 'none';
             actionAfterReload = null;
         }
@@ -242,23 +303,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function navigateLightbox(direction) {
         const newIndex = currentImageIndex + direction;
 
-        // If the next image is on the current page, just open it.
         if (newIndex >= 0 && newIndex < currentImages.length) {
-            openLightbox(newIndex); // Re-opens lightbox for the new image
+            openLightbox(newIndex);
             return;
         }
 
-        // If we're at an edge, we need to check if we can load another page
-        // before showing the loader. This prevents the loader from getting stuck.
         if (direction === 1 && !galleryManager.getHasMorePages()) {
-            return; // At the very end of the gallery, do nothing.
+            return;
         }
         if (direction === -1 && galleryManager.getCurrentPage() <= 1) {
-            return; // At the very beginning of the gallery, do nothing.
+            return;
         }
 
-        // We need to load a new page. Set the direction and let the manager handle it.
-        // The onPageLoad callback will use the direction to open the correct image.
         lightboxNavDirection = direction;
         lightboxLoadingIndicator.style.display = 'block';
 
@@ -350,7 +406,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tagTooltip.innerHTML = renderTagPills(image.tags, false);
         
-        // Use a temporary class to calculate dimensions without a visual flicker.
         tagTooltip.classList.add('visible-calculating');
         const tooltipRect = tagTooltip.getBoundingClientRect();
         tagTooltip.classList.remove('visible-calculating');
@@ -358,7 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
         let left = event.clientX + 15;
         let top = event.clientY + 15;
 
-        // Smartly adjust position to prevent overflowing the viewport.
         if (left + tooltipRect.width > window.innerWidth) {
             left = event.clientX - tooltipRect.width - 15;
         }
@@ -398,8 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Handles page-specific keyboard shortcuts, like toggling tooltips.
-     * Note: Pagination shortcuts are now handled by the shared manager.
+     * Handles page-specific keyboard shortcuts.
      * @param {KeyboardEvent} e The keyboard event.
      */
     function handleGalleryKeydown(e) {
@@ -407,7 +460,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Lightbox is OPEN ---
         if (lightboxModal.style.display === 'flex') {
-            // Handle Escape key first, as it applies to both modes.
             if (e.key === 'Escape') {
                 e.preventDefault();
                 if (lightboxContent.classList.contains('edit-mode')) {
@@ -423,11 +475,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (lightboxContent.classList.contains('view-mode')) {
                  if (e.target.matches('input, textarea')) return;
 
-                // Handle Shift+D for deletion first to prevent fall-through.
                 if (e.shiftKey && e.key.toLowerCase() === 'd') {
                     e.preventDefault();
                     lightboxDeleteBtn.click();
-                    return; // Explicitly stop here so it doesn't trigger navigation.
+                    return;
                 }
 
                 switch (e.key.toLowerCase()) {
@@ -446,10 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             // --- In EDIT MODE ---
             else if (lightboxContent.classList.contains('edit-mode')) {
-                // Do not trigger shortcuts if the user is focused on the tag input field.
-                if (document.activeElement === lightboxTagInput) {
-                    return;
-                }
+                if (document.activeElement === lightboxTagInput) return;
 
                 switch (e.key.toLowerCase()) {
                     case 's':
@@ -479,14 +527,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 6. INITIALIZATION ---
 
     function initialize() {
-        // Initial setup calls
         const savedSize = localStorage.getItem('thumbSize') || DEFAULT_THUMB_SIZE;
         applyThumbSize(savedSize);
 
         // General event listeners
         lightboxClose.addEventListener('click', closeLightbox);
         lightboxModal.addEventListener('click', (e) => {
-            // If the user clicks on the dark backdrop of the modal, close it.
             if (e.target === lightboxModal) {
                 closeLightbox();
             }
@@ -494,9 +540,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         lightboxPrev.addEventListener('click', () => navigateLightbox(-1));
         lightboxNext.addEventListener('click', () => navigateLightbox(1));
-
         document.addEventListener('keydown', handleGalleryKeydown);
-
         thumbnailControls.addEventListener('click', (e) => {
             if (e.target.dataset.size) { applyThumbSize(e.target.dataset.size); }
         });
@@ -505,9 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
         lightboxEditBtn.addEventListener('click', () => setLightboxMode('edit'));
         lightboxCancelBtn.addEventListener('click', () => {
             setLightboxMode('view');
-            showImageInLightbox(currentImages[currentImageIndex]); // Restore original tags on cancel
+            showImageInLightbox(currentImages[currentImageIndex]);
         });
-
         lightboxSaveBtn.addEventListener('click', handleSaveTags);
         lightboxDeleteBtn.addEventListener('click', handleDelete);
         
@@ -521,7 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        
         lightboxTagInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -534,7 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-
         lightboxTagInput.addEventListener('input', (e) => {
             const query = e.target.value.trim();
             clearTimeout(searchDebounceTimer);
@@ -544,7 +585,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 showRecentsInHelper();
             }
         });
-
         tagHelperContentArea.addEventListener('click', (e) => {
             if (e.target.matches('a.tag-pill')) {
                 e.preventDefault();

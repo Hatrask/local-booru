@@ -19,7 +19,7 @@
  * @param {HTMLElement} options.galleryGridEl - The container element for the image grid.
  * @param {HTMLElement} options.paginationEl - The container element for pagination controls.
  * @param {string} options.pageUrl - The base URL for the page (e.g., '/gallery' or '/batch_actions').
- * @param {Function} options.renderItem - A callback function to render a single item in the grid.
+ * @param {Function} options.renderItem - A callback function to render a single item in the grid. Can be async.
  * @param {Function} [options.onPageLoad] - An optional callback that fires after a new page of images is loaded.
  */
 function createGalleryManager(options) {
@@ -47,7 +47,7 @@ function createGalleryManager(options) {
     async function loadPage(pageToLoad = 1) {
         if (isLoading) return;
         isLoading = true;
-        galleryGridEl.innerHTML = '<p>Loading images...</p>';
+        galleryGridEl.innerHTML = '<p>Loading images...</p>'; 
         currentPage = parseInt(pageToLoad, 10);
 
         const newUrl = `${pageUrl}?q=${encodeURIComponent(searchQuery)}&page=${currentPage}`;
@@ -67,9 +67,11 @@ function createGalleryManager(options) {
             totalImages = data.total;
             hasMorePages = data.has_more;
 
-            renderGallery(data.images);
+            await renderGallery(data.images);
             renderPagination();
             
+            // NOTE: The onPageLoad callback in gallery.js can now be simplified.
+            // It no longer needs to handle rendering itself.
             if (typeof onPageLoad === 'function') {
                 onPageLoad(data.images);
             }
@@ -86,19 +88,18 @@ function createGalleryManager(options) {
      * Renders the grid of image thumbnails using the provided `renderItem` callback.
      * @param {Array<Object>} images - An array of image objects from the API.
      */
-    function renderGallery(images) {
+    async function renderGallery(images) {
         galleryGridEl.innerHTML = '';
         if (images.length === 0) {
             galleryGridEl.innerHTML = '<p style="text-align: center;">No images found.</p>';
             return;
         }
-        images.forEach((img, index) => {
-            const itemElement = renderItem(img, index);
-            if (itemElement) {
-                galleryGridEl.appendChild(itemElement);
-            }
-        });
+
+        const itemPromises = images.map((img, index) => renderItem(img, index));
+        const itemElements = await Promise.all(itemPromises);
+        galleryGridEl.append(...itemElements.filter(el => el));
     }
+
 
     /**
      * Renders the pagination controls.
@@ -122,10 +123,8 @@ function createGalleryManager(options) {
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
-        // This check prevents shortcuts from firing while typing in any input.
         if (e.target.matches('input, textarea, select')) return;
 
-        // Check if the lightbox is open (gallery-specific)
         const lightboxIsOpen = document.getElementById('lightbox-modal')?.style.display === 'flex';
         if (lightboxIsOpen) return;
 
@@ -156,28 +155,21 @@ function createGalleryManager(options) {
         }
     });
     
-    // Initial page load
     loadPage(currentPage);
 
-    // Expose a public method to allow the calling script to trigger a reload.
 	return {
-        /** Reloads the gallery at a specific page. */
         reload: (page) => loadPage(page),
-        /** Navigates to the next page if one exists. */
         goToNextPage: () => {
             if (hasMorePages) {
                 loadPage(currentPage + 1);
             }
         },
-        /** Navigates to the previous page if one exists. */
         goToPrevPage: () => {
             if (currentPage > 1) {
                 loadPage(currentPage - 1);
             }
         },
-        /** Returns the current page number. */
         getCurrentPage: () => currentPage,
-        /** Returns true if there are more pages available. */
         getHasMorePages: () => hasMorePages
     };
 }
