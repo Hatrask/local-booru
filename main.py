@@ -7,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import Column, Integer, String, Table, ForeignKey, create_engine, desc, orm, func, or_, and_, UniqueConstraint, DateTime
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base, Session
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, IO
 
 # --- Path setup for PyInstaller ---
 if getattr(sys, 'frozen', False):
@@ -157,13 +157,12 @@ def get_db():
 
 # --- Helper Functions ---
 
-def calculate_sha256(file_like_object) -> str:
-    """Calculates the SHA256 hash of a file-like object in a memory-efficient way."""
+def calculate_sha256(file: IO[bytes]) -> str:
+    """Calculates the SHA256 hash of a file-like object by reading it in chunks."""
     sha256_hash = hashlib.sha256()
-    file_like_object.seek(0)
-    for byte_block in iter(lambda: file_like_object.read(4096), b""):
+    # Read the file in 4MB chunks
+    for byte_block in iter(lambda: file.read(4096 * 1024), b""):
         sha256_hash.update(byte_block)
-    file_like_object.seek(0)
     return sha256_hash.hexdigest()
 
 def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
@@ -259,30 +258,47 @@ def upload_images(
     tags_to_add = get_or_create_tags(db, tag_names)
     uploaded_count = 0
     
+    # Fetch all existing hashes at once to minimize database queries inside the loop.
     existing_hashes = {res[0] for res in db.query(Image.sha256_hash).all()}
 
     for file in files:
+        if not file.content_type.startswith("image/"):
+            continue
+
+        # Reset the file's stream position to the beginning.
+        # This is crucial because calculate_sha256 will read the stream to the end.
+        file.file.seek(0)
+        
         file_hash = calculate_sha256(file.file)
         if file_hash in existing_hashes:
             continue
         
         try:
-            extension = os.path.splitext(file.filename)[1].lstrip('.') or "jpg"
-        except IndexError:
+            # Use the content type to suggest a more reliable extension.
+            subtype = file.content_type.split('/')[-1]
+            extension = os.path.splitext(file.filename)[1].lstrip('.') or subtype or "jpg"
+        except (IndexError, AttributeError):
             extension = "jpg"
             
         unique_filename = f"{uuid.uuid4().hex}.{extension}"
         path = os.path.join(MEDIA_DIR, "images", unique_filename)
         
-        with open(path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        try:
+            # Reset the file stream again before the final write operation.
+            # This ensures that shutil.copyfileobj can read the file from the beginning.
+            file.file.seek(0)
+            with open(path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+
+            image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
+            db.add(image)
             
-        image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
-        db.add(image)
+            existing_hashes.add(file_hash)
+            uploaded_count += 1
         
-        existing_hashes.add(file_hash)
-        uploaded_count += 1
-        
+        finally:
+            file.file.close()
+
     db.commit()
     return JSONResponse(
         {"message": f"{uploaded_count} image(s) uploaded successfully."},

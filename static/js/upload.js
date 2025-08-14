@@ -59,34 +59,51 @@ document.addEventListener('DOMContentLoaded', () => {
      * @param {File} file The file to create a preview for.
      */
     function createAndAppendPreview(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'preview-thumb-wrapper';
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'preview-remove-btn';
-            removeBtn.innerHTML = '&times;';
-            removeBtn.title = 'Remove ' + file.name;
-            removeBtn.onclick = () => {
-                wrapper.remove();
-                queuedFiles = queuedFiles.filter(f => f !== file);
-                updateUIVisuals();
-            };
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.className = 'preview-thumb';
-            wrapper.appendChild(img);
-            wrapper.appendChild(removeBtn);
-            previewContainer.appendChild(wrapper);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'preview-thumb-wrapper';
+
+        const img = document.createElement('img');
+        // Create a memory-efficient object URL instead of reading the whole file into memory.
+        const objectUrl = URL.createObjectURL(file);
+        img.src = objectUrl;
+        img.className = 'preview-thumb';
+        // Store the URL on the element so we can revoke it later to prevent memory leaks.
+        img.dataset.objectUrl = objectUrl;
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'preview-remove-btn';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.title = 'Remove ' + file.name;
+
+        removeBtn.onclick = () => {
+            // Find the corresponding image and revoke its object URL to free up memory.
+            const imgToRemove = wrapper.querySelector('img');
+            if (imgToRemove && imgToRemove.dataset.objectUrl) {
+                URL.revokeObjectURL(imgToRemove.dataset.objectUrl);
+            }
+            wrapper.remove();
+            queuedFiles = queuedFiles.filter(f => f !== file);
+            updateUIVisuals();
         };
-        reader.readAsDataURL(file);
+
+        wrapper.appendChild(img);
+        wrapper.appendChild(removeBtn);
+        previewContainer.appendChild(wrapper);
     }
+
 
     /**
      * Clears the file queue and resets all related UI elements to their initial state.
      */
     function clearQueue() {
+        // Revoke all created object URLs before clearing the HTML.
+        previewContainer.querySelectorAll('.preview-thumb').forEach(img => {
+            if (img.dataset.objectUrl) {
+                URL.revokeObjectURL(img.dataset.objectUrl);
+            }
+        });
+
         queuedFiles = [];
         previewContainer.innerHTML = '';
         uploadForm.reset();
@@ -152,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (const item of (items instanceof DataTransferItemList ? Array.from(items) : Array.from(items))) {
                 if (fileLimitBreached) break;
                 const entry = typeof item.webkitGetAsEntry === 'function' ? item.webkitGetAsEntry() : null;
-                
+
                 if (entry?.isDirectory) {
                     await traverseDirectory(entry);
                 } else if (entry?.isFile) {
