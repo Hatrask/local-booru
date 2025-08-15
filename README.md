@@ -76,8 +76,9 @@ This method is for macOS, Linux, and Windows users who prefer to run the applica
 4.  **Run the application:**
     ```bash
     python main.py
-    ```    The server will start. You should see output similar to this:
-    ```
+    ```    
+	The server will start. You should see output similar to this:
+    ```bash
     INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
     ```
 
