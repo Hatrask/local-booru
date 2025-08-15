@@ -79,6 +79,7 @@ Your data is stored in the root directory of the project.
 
 *   `database.db`: The SQLite database file containing all image and tag information. It is automatically created and managed by the application.
 *   `media/images/`: All your uploaded image files are stored here.
+*	`media/images/thumbnails`: All the images will have a thumbnail stored in this directory to improve the performance of the application.
 *   `undo_state.json`: This file is created temporarily when you perform a batch tag action, allowing you to undo it. It is deleted after a successful undo or overwritten by the next batch action.
 
 **Note:** Saved searches and theme preferences are stored directly in your web browser's `localStorage` and are not part of the server-side file structure.
