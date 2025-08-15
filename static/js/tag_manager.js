@@ -78,28 +78,55 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function renderTagList(tags) {
         tagListElem.innerHTML = '';
+        let listHasContent = false;
         
-        // Conditionally display the special "untagged" item if there are no active filters.
-        const shouldShowUntagged = untaggedCount > 0 && !filterInput.value && !showOrphansOnlyCheckbox.checked;
-        if (shouldShowUntagged) {
+        // --- Handle special items (Favorite and Untagged) ---
+        // These only appear when no filters are active.
+        const shouldShowSpecialItems = !filterInput.value && !showOrphansOnlyCheckbox.checked;
+
+        // Find the favorite tag in the master list.
+        const favoriteTag = allTags.find(tag => tag.category === 'metadata' && tag.name === 'favorite');
+
+        if (favoriteTag && shouldShowSpecialItems) {
+            const li = document.createElement('li');
+            li.className = 'tag-item';
+            li.id = `tag-item-${favoriteTag.id}`;
+            const categoryOptions = VALID_CATEGORIES.map(c => `<option value="${c}" ${c === favoriteTag.category ? 'selected' : ''}>${c}</option>`).join('');
+
+            li.innerHTML = `
+                <div class="tag-display">
+                    <div>
+                        <a href="/gallery?q=${encodeURIComponent('metadata:favorite')}" class="tag-name-link tag-pill tag-metadata" data-tag="metadata:favorite">favorite</a>
+                        <span class="tag-count" style="margin-left: 0.5rem;">(${favoriteTag.count})</span>
+                    </div>
+                </div>
+            `;
+            tagListElem.appendChild(li);
+            listHasContent = true;
+        }
+        
+        if (untaggedCount > 0 && shouldShowSpecialItems) {
             const untaggedLi = document.createElement('li');
             untaggedLi.className = 'tag-item';
             untaggedLi.innerHTML = `
                 <div class="tag-display">
                     <div>
-                        <a href="/gallery?q=untagged" class="tag-name-link">untagged</a>
+                        <a href="/gallery?q=untagged" class="tag-name-link tag-pill tag-metadata">untagged</a>
                         <span class="tag-count">(${untaggedCount})</span>
                     </div>
                 </div>
             `;
             tagListElem.appendChild(untaggedLi);
+            listHasContent = true;
         }
 
-        if (tags.length === 0 && !shouldShowUntagged) {
-            tagListElem.innerHTML = '<li class="tag-item" style="text-align: center;">No tags match the current filters.</li>';
-        }
-
+        // --- Render the main, filtered list of tags ---
         tags.forEach(tag => {
+            // If special items are shown, don't render the favorite tag a second time.
+            if (shouldShowSpecialItems && tag.id === favoriteTag?.id) {
+                return;
+            }
+
             const li = document.createElement('li');
             li.className = 'tag-item';
             li.id = `tag-item-${tag.id}`;
@@ -142,7 +169,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             `;
             tagListElem.appendChild(li);
+            listHasContent = true;
         });
+
+        if (!listHasContent) {
+            tagListElem.innerHTML = '<li class="tag-item" style="text-align: center;">No tags match the current filters.</li>';
+        }
     }
     
     /**

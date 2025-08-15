@@ -54,7 +54,7 @@ function getTagCategoryClass(category) {
 function renderTagPills(tags, isEditable = false) {
     if (!tags || tags.length === 0) {
         // Provide a default for non-editable contexts, and nothing for editable ones.
-        return !isEditable ? '<span>No tags</span>' : '';
+        return !isEditable ? '<a href="/gallery?q=untagged" class="tag-name-link tag-pill tag-metadata">untagged</a>' : '';
     }
     return tags.map(tag => {
         const categoryClass = getTagCategoryClass(tag.category);
@@ -64,7 +64,8 @@ function renderTagPills(tags, isEditable = false) {
              return `<span class="tag-pill ${categoryClass}" data-tag="${rawTagName}">${tag.name}<button class="remove-tag-btn">×</button></span>`;
         } else {
             const searchLink = `?q=${encodeURIComponent(rawTagName)}`;
-            return `<a href="${searchLink}" class="tag-pill ${categoryClass}">${tag.name}</a>`;
+            // The data-tag attribute is added here to allow CSS to style special tags like 'favorite'.
+            return `<a href="${searchLink}" class="tag-pill ${categoryClass}" data-tag="${rawTagName}">${tag.name}</a>`;
         }
     }).join('');
 }

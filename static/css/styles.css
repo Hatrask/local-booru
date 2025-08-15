@@ -170,10 +170,6 @@ code {
     color: #111;
     font-weight: bold;
 }
-.tag-pill.tag-metadata[data-tag="metadata:favorite"]::before {
-    content: "★ ";
-    font-family: sans-serif;
-}
 
 a.tag-pill:hover { filter: brightness(1.2); }
 
