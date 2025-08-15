@@ -79,7 +79,11 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             // This function now comes from ui_helpers.js
             const categoryClass = getTagCategoryClass(tag.category);
 
-            div.innerHTML = `<span class="suggestion-tag-pill ${categoryClass}">${rawTag}</span>`;
+            // Add the 'data-tag' attribute specifically for the favorite tag to enable styling.
+            // We also add the base 'tag-pill' class to ensure the favorite styles apply correctly.
+            const dataAttribute = rawTag === 'metadata:favorite' ? `data-tag="metadata:favorite"` : '';
+            div.innerHTML = `<span class="suggestion-tag-pill tag-pill ${categoryClass}" ${dataAttribute}>${rawTag}</span>`;
+
             div.dataset.action = 'select-tag';
             div.dataset.query = rawTag;
             suggestionsContainer.appendChild(div);

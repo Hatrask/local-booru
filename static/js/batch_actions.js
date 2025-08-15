@@ -69,6 +69,18 @@ document.addEventListener('DOMContentLoaded', () => {
         thumb.appendChild(imgEl);
         thumb.insertAdjacentHTML('beforeend', `<div class="tags">${tagsHTML}</div>`);
 
+        // Apply special styling for the 'favorite' tag.
+        const isFavorite = img.tags.some(tag => tag.category === 'metadata' && tag.name === 'favorite');
+        if (isFavorite) {
+            // Find the pill among all metadata tags based on its text content.
+            const metadataPills = thumb.querySelectorAll('.tag-pills-container .tag-metadata');
+            const favoritePill = Array.from(metadataPills).find(pill => pill.textContent.trim() === 'favorite');
+            
+            if (favoritePill) {
+                favoritePill.dataset.tag = 'metadata:favorite';
+            }
+        }
+
         return thumb;
     }
 

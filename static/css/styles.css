@@ -34,6 +34,7 @@
     --tag-color-character: #9c27b0;
     --tag-color-copyright: #ff9800;
     --tag-color-metadata: #6c757d;
+	--tag-color-favorite: #ffc107;
 
     /* Layout */
     --border-radius: 4px;
@@ -161,6 +162,17 @@ code {
     display: inline-block; padding: 0.2em 0.6em; margin: 0.1em;
     border-radius: var(--border-radius); font-size: 0.85em; font-weight: 500;
     line-height: 1.4; color: white; text-decoration: none;
+}
+
+/* Style for 'favorite' tag */
+.tag-pill.tag-metadata[data-tag="metadata:favorite"] {
+    background-color: var(--tag-color-favorite);
+    color: #111;
+    font-weight: bold;
+}
+.tag-pill.tag-metadata[data-tag="metadata:favorite"]::before {
+    content: "★ ";
+    font-family: sans-serif;
 }
 
 a.tag-pill:hover { filter: brightness(1.2); }

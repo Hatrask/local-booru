@@ -1,7 +1,3 @@
-Of course! Here are the updated installation instructions for your `README.md` file, prioritizing the new PyInstaller release for Windows users.
-
----
-
 # local-booru
 
 A simple, self-hosted image gallery (booru) with a focus on powerful tagging and a clean, single-user interface. This project is designed for individuals who want to organize their personal image collections locally with the privacy and control of self-hosting.

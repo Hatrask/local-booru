@@ -152,7 +152,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- View Mode Setup ---
         lightboxImageId.textContent = `Image ID: ${image.id}`;
         lightboxTagsDisplay.innerHTML = renderTagPills(image.tags, false);
-        
+
+		// Add class for favorite tags
+        const isFavorite = image.tags.some(tag => tag.category === 'metadata' && tag.name === 'favorite');
+        if (isFavorite) {
+            const favoritePill = Array.from(lightboxTagsDisplay.querySelectorAll('.tag-metadata'))
+                                      .find(pill => pill.textContent.trim() === 'favorite');
+            if (favoritePill) {
+                favoritePill.dataset.tag = 'metadata:favorite';
+            }
+        }
+
         // --- Button data attributes ---
         lightboxDeleteBtn.dataset.imageId = image.id;
         lightboxSaveBtn.dataset.imageId = image.id;
@@ -401,6 +411,62 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
+     * Toggles the 'metadata:favorite' tag on the currently viewed lightbox image.
+     * It fetches the current tags, adds or removes the favorite tag, and then
+     * calls the API to save the changes, updating the UI upon success.
+     */
+    async function toggleFavorite() {
+        if (currentImageIndex < 0) return;
+
+        const image = currentImages[currentImageIndex];
+        const favoriteTagName = 'metadata:favorite';
+
+        // Create a Set of raw tag names for easy manipulation.
+        const currentTags = new Set(
+            image.tags.map(tag => tag.category === 'general' ? tag.name : `${tag.category}:${tag.name}`)
+        );
+
+        const isFavorite = currentTags.has(favoriteTagName);
+
+        if (isFavorite) {
+            currentTags.delete(favoriteTagName);
+        } else {
+            currentTags.add(favoriteTagName);
+        }
+
+        try {
+            const response = await fetch(`/api/image/${image.id}/tags`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tags: Array.from(currentTags) })
+            });
+
+            if (!response.ok) {
+                const result = await response.json();
+                throw new Error(result.detail || 'Failed to update favorite status.');
+            }
+            
+            const result = await response.json();
+            // Update the local data to keep it in sync.
+            currentImages[currentImageIndex].tags = result.tags;
+
+            showToast(isFavorite ? 'Removed from favorites' : 'Added to favorites', 'success');
+            
+            // Re-render the UI to show the change.
+            showImageInLightbox(currentImages[currentImageIndex]);
+            
+            // If in edit mode, also update the tag editor pills.
+            if (lightboxContent.classList.contains('edit-mode')) {
+                renderTagEditor();
+            }
+
+        } catch (error) {
+            console.error('Error toggling favorite:', error);
+            showToast(error.message, 'error');
+        }
+    }
+
+    /**
      * Handles page-specific keyboard shortcuts.
      * @param {KeyboardEvent} e The keyboard event.
      */
@@ -422,7 +488,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // --- In VIEW MODE ---
             if (lightboxContent.classList.contains('view-mode')) {
-                 if (e.target.matches('input, textarea')) return;
+                if (e.target.matches('input, textarea')) return;
+
+				if (e.key.toLowerCase() === 'f') {
+					e.preventDefault();
+					toggleFavorite();
+					return;
+				}
 
                 if (e.shiftKey && e.key.toLowerCase() === 'd') {
                     e.preventDefault();
