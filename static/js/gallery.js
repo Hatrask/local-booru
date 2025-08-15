@@ -11,7 +11,7 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. CONFIGURATION & CONSTANTS ---
-    const IMAGES_PER_PAGE = 49;
+    const IMAGES_PER_PAGE = 54;
     const DEFAULT_THUMB_SIZE = '250';
     const CANVAS_THUMBNAIL_SIZE = 850;
     const TOOLTIP_SHOW_DELAY = 100;
