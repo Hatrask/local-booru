@@ -1,3 +1,7 @@
+Of course! Here are the updated installation instructions for your `README.md` file, prioritizing the new PyInstaller release for Windows users.
+
+---
+
 # local-booru
 
 A simple, self-hosted image gallery (booru) with a focus on powerful tagging and a clean, single-user interface. This project is designed for individuals who want to organize their personal image collections locally with the privacy and control of self-hosting.
@@ -20,14 +24,36 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
 
 ## Getting Started
 
-Follow these steps to get `local-booru` running on your local machine.
+Follow these steps to get `local-booru` running on your machine.
 
-### Prerequisites
+### Installation for Windows (Recommended)
+
+For Windows users, the easiest way to get started is by using the pre-built application available on the project's releases page.
+
+1.  **Download the latest release:**
+    *   Go to the **[Releases Tab](https://github.com/Hatrask/local-booru/releases)** on GitHub.
+    *   Download the latest `.zip` file for Windows.
+
+2.  **Extract the application:**
+    *   Unzip the downloaded file to a folder of your choice.
+
+3.  **Run the application:**
+    *   Open the extracted folder and double-click the `local-booru.exe` (or similar) executable file.
+    *   The server will start in a command-line window.
+
+4.  **Open the application:**
+    *   Open your web browser and navigate to **[http://127.0.0.1:8000](http://127.0.0.1:8000)**.
+
+### Manual Installation (All Platforms)
+
+This method is for macOS, Linux, and Windows users who prefer to run the application from the source code.
+
+#### Prerequisites
 
 *   Python 3.7 or newer
 *   `pip` (Python's package installer)
 
-### Installation
+#### Instructions
 
 1.  **Clone the repository:**
     ```bash
@@ -40,7 +66,7 @@ Follow these steps to get `local-booru` running on your local machine.
     # On Windows
     python -m venv venv
     venv\Scripts\activate
-    
+
     # On macOS/Linux
     python3 -m venv venv
     source venv/bin/activate
@@ -54,8 +80,7 @@ Follow these steps to get `local-booru` running on your local machine.
 4.  **Run the application:**
     ```bash
     python main.py
-    ```
-    The server will start. You should see output similar to this:
+    ```    The server will start. You should see output similar to this:
     ```
     INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
     ```
