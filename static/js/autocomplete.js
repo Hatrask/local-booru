@@ -6,7 +6,7 @@
  * It can also be configured to show saved and recent searches.
  *
  * It depends on:
- * - ui_helpers.js (for tag parsing and styling)
+ * - ui_helpers.js (for tag parsing, styling, and VALID_CATEGORIES constant)
  * - saved_searches_manager.js (for saved/recent search functionality)
  */
 
@@ -93,6 +93,27 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     }
 
     /**
+     * Renders a list of valid categories for the user to start a tag with.
+     */
+    function renderCategorySuggestions() {
+        // VALID_CATEGORIES is a global constant from ui_helpers.js
+        suggestionsContainer.innerHTML = '';
+        VALID_CATEGORIES.forEach(category => {
+            const div = document.createElement('div');
+            const categoryClass = getTagCategoryClass(category); // from ui_helpers.js
+
+            // Create a color-coded pill for the category suggestion.
+            div.innerHTML = `<span class="suggestion-tag-pill tag-pill ${categoryClass}">${category}</span>`;
+
+            div.dataset.action = 'select-category';
+            div.dataset.query = category;
+            suggestionsContainer.appendChild(div);
+        });
+        selectedIndex = -1;
+        showSuggestions();
+    }
+    
+    /**
      * Renders the saved and recent searches in the suggestions dropdown.
      */
     function renderSavedSearches() {
@@ -151,7 +172,8 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             onSelect(selectedTag);
         } else {
             const { prefix } = getAutocompleteContext(inputElement.value);
-            const suffix = inputElement.tagName === 'TEXTAREA' ? ', ' : ' ';
+            // Always add a comma and a space after selecting a tag to streamline adding the next one.
+            const suffix = ', ';
             inputElement.value = `${prefix}${selectedTag}${suffix}`;
         }
         inputElement.focus();
@@ -176,11 +198,35 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
      * Handles the 'input' event with debouncing to prevent excessive API calls.
      */
     function handleInput() {
-        const { term } = getAutocompleteContext(inputElement.value);
-        if (term === '' && inputElement.value.trim() !== '') {
+        const value = inputElement.value;
+    
+        // If the input is completely empty, show initial suggestions (saved searches or categories).
+        if (value.trim() === '') {
+            if (showSavedSearches) {
+                renderSavedSearches();
+            } else {
+                renderCategorySuggestions();
+            }
+            return;
+        }
+    
+        // If the user just finished a tag with a comma, show category suggestions for the next tag.
+        // We check the value trimmed of trailing whitespace.
+        if (value.trimEnd().endsWith(',')) {
+            renderCategorySuggestions();
+            return;
+        }
+    
+        const { term } = getAutocompleteContext(value);
+    
+        // If there's no term to search for (e.g., after "tag1 AND "), hide suggestions.
+        // This won't run in the comma case because we returned early.
+        if (term === '') {
             hideSuggestions();
             return;
         }
+    
+        // Otherwise, fetch tag suggestions based on the current term.
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(fetchTagSuggestions, 250);
     }
@@ -235,6 +281,12 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
             case 'select-tag':
                 selectTagSuggestion(query);
                 break;
+            case 'select-category':
+                const { prefix } = getAutocompleteContext(inputElement.value);
+                inputElement.value = `${prefix}${query}:`;
+                inputElement.focus();
+                hideSuggestions();
+                break;
             case 'select-query':
                 inputElement.value = query;
                 addRecentSearch(query); // from saved_searches_manager.js
@@ -259,13 +311,15 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
     inputElement.addEventListener('input', handleInput);
     inputElement.addEventListener('keydown', handleKeydown);
 
-    if (showSavedSearches) {
-        inputElement.addEventListener('focus', () => {
-            if (inputElement.value.trim() === '') {
+    inputElement.addEventListener('focus', () => {
+        if (inputElement.value.trim() === '') {
+            if (showSavedSearches) {
                 renderSavedSearches();
+            } else {
+                renderCategorySuggestions();
             }
-        });
-    }
+        }
+    });
 
     // Use 'mousedown' to prevent the input from losing focus before the click is registered.
     suggestionsContainer.addEventListener('mousedown', handleSuggestionInteraction);
