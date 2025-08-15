@@ -11,8 +11,9 @@ A simple, self-hosted image gallery (booru) with a focus on powerful tagging and
 *   **Data Management UI:** Easily import and export your entire collection, or perform a factory reset, directly from the Settings page in the web interface.
 *   **Tag-Based Search Syntax:** Find images using a dedicated query language that supports `AND`, `OR`, `NOT`, and `wildcard (*)` logic, along with a special `untagged` keyword.
 *   **Saved & Recent Searches:** Automatically keeps a list of your recent queries. You can "pin" your most important searches for permanent access from the search bar.
+*   **Favorite Images:** Quickly add or remove images from your favorites with a single keypress (`F`) in the lightbox viewer.
 *   **Image Gallery with Integrated Editor:** Browse your collection in a masonry-style grid. Clicking an image opens a two-state lightbox:
-    *   **View Mode:** Navigate between images, view tags, and use keyboard shortcuts for browsing.
+    *   **View Mode:** Navigate between images, view tags, use keyboard shortcuts for browsing, and favorite images.
     *   **Edit Mode:** Switch to a side-panel view to edit an image's tags directly in the lightbox, with access to a helper panel for finding recent or existing tags.
 *   **Batch Tagging & Deletion:** A dedicated page for performing actions on multiple images at once. Selections persist across pages, and you can add, remove, replace, or delete tags in bulk.
 *   **Undo for Batch Operations:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after an application restart.
@@ -38,7 +39,7 @@ For Windows users, the easiest way to get started is by using the pre-built appl
     *   The server will start in a command-line window.
 
 4.  **Open the application:**
-    *   Open your web browser and navigate to **[http://127.0.0.1:8000](http://127.0.0.1:8000)**.
+    *   Open your web browser and navigate to **[http://1227.0.0.1:8000](http://127.0.0.1:8000)**.
 
 ### Manual Installation (All Platforms)
 
@@ -90,7 +91,7 @@ This method is for macOS, Linux, and Windows users who prefer to run the applica
 1.  **Upload:** Go to the "Upload" page to add your first images. You can add categorized tags directly on upload (e.g., `artist:someartist, character:somechar, tag1`).
 2.  **Browse:** Navigate to the "Gallery" to see your collection. Press `T` to toggle the tag tooltips on and off.
 3.  **Search:** Use the search bar to filter images. You can now search by category (e.g., `character:reimu_hakurei`).
-4.  **View & Edit:** Click any image to open it in the lightbox. In **View Mode**, you can navigate between images. Press `E` to switch to **Edit Mode**, where a sidebar appears, allowing you to modify the image's tags. Press `S` to save your changes or `Esc` to cancel and return to view mode.
+4.  **View & Edit:** Click any image to open it in the lightbox. In **View Mode**, you can navigate between images or press `F` to favorite an image. Press `E` to switch to **Edit Mode**, where a sidebar appears, allowing you to modify the image's tags. Press `S` to save your changes or `Esc` to cancel and return to view mode.
 5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
 6.  **Manage Data:** Visit the **Settings** page to import/export your collection or perform a factory reset.
 

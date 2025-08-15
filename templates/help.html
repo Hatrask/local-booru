@@ -60,7 +60,7 @@
         </p>
         <ul>
             <li>
-                <strong>View Mode (Default):</strong> This mode is for browsing. You see a large version of the image, and its tags are displayed in a panel that appears when you hover over the image. You can navigate, delete, or enter edit mode from here.
+                <strong>View Mode (Default):</strong> This mode is for browsing. You see a large version of the image, and its tags are displayed in a panel that appears when you hover over the image. You can navigate, favorite an image (press <code>F</code>), delete, or enter edit mode from here.
             </li>
             <li>
                 <strong>Edit Mode:</strong> Pressing the <code>E</code> key or clicking "Edit Tags" switches to this mode. The image panel shrinks, and a sidebar appears listing current and recent tags used.
@@ -112,6 +112,7 @@
         <h5>Special Queries</h5>
         <ul class="example-list">
             <li><code>untagged</code> - A special keyword to find all images that have no tags assigned to them.</li>
+            <li><code>metadata:favorite</code> - Finds all images you have marked as a favorite.</li>
         </ul>
 
         <!-- Section 3: Tag Categories -->
@@ -125,7 +126,7 @@
             <li><code class="tag-pill tag-artist">artist</code>: For the creator of the artwork.</li>
             <li><code class="tag-pill tag-character">character</code>: For named characters depicted in the image.</li>
             <li><code class="tag-pill tag-copyright">copyright</code>: For the series, franchise, or game the content is from.</li>
-            <li><code class="tag-pill tag-metadata">metadata</code>: For technical details or user-specific information (e.g., <code>highres</code>, <code>comic</code>, <code>to_sort</code>).</li>
+            <li><code class="tag-pill tag-metadata">metadata</code>: For technical details or user-specific information (e.g., <code>highres</code>, <code>comic</code>, <code>favorite</code>). The <code>favorite</code> metadata tag has special styling to make it stand out.</li>
         </ul>
 
         <h4>How to Use Categories</h4>
@@ -210,6 +211,7 @@
         <ul>
             <li><code>A</code> or <code>ArrowLeft</code>: View the previous image.</li>
             <li><code>D</code> or <code>ArrowRight</code>: View the next image.</li>
+            <li><code>F</code>: Add or remove the current image from your favorites.</li>
             <li><code>E</code>: Enter Edit Mode.</li>
             <li><code>Shift + D</code>: Delete the current image (a confirmation will appear).</li>
             <li><code>Escape</code>: Close the lightbox.</li>
