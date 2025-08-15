@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function showRecentsInHelper() {
         tagHelperTitle.textContent = 'Recent Tags';
         try {
-            const response = await fetch('/api/tags/recent?limit=50');
+            const response = await fetch('/api/tags/recent?limit=30');
             if (!response.ok) throw new Error('Could not fetch recent tags.');
             const tags = await response.json();
             renderTagCloudInHelper(tags, tagHelperContentArea);
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function showSearchResultsInHelper(query) {
         tagHelperTitle.textContent = 'Search Results';
         try {
-            const response = await fetch(`/api/tags/autocomplete?q=${encodeURIComponent(query)}&limit=50`);
+            const response = await fetch(`/api/tags/autocomplete?q=${encodeURIComponent(query)}&limit=30`);
             if (!response.ok) throw new Error('Tag search failed');
             const tags = await response.json();
             renderTagCloudInHelper(tags, tagHelperContentArea);
