@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const importForm = document.getElementById('import-form');
     const importFileInput = document.getElementById('import-file-input');
     const importLabel = document.getElementById('import-label');
+    const maintenanceScanBtn = document.getElementById('maintenance-scan-btn');
 
     // --- 2. EVENT HANDLERS & LOGIC ---
 
@@ -96,6 +97,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /**
+     * Handles the full maintenance scan process.
+     */
+    async function handleMaintenanceScan() {
+        const promptMessage = 'This will perform a deep scan to fix all data inconsistencies. This includes deleting broken database records and orphaned files, and regenerating missing thumbnails. This action cannot be undone.\n\nAre you sure you want to continue?';
+        if (!confirm(promptMessage)) {
+            showToast('Maintenance scan cancelled.', 'info');
+            return;
+        }
+
+        maintenanceScanBtn.disabled = true;
+        maintenanceScanBtn.textContent = 'Scanning...';
+
+        try {
+            const response = await fetch('/api/maintenance/run_full_scan', {
+                method: 'POST',
+            });
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result.detail || 'An unknown error occurred.');
+            }
+            
+            // Build a detailed summary of actions taken.
+            const summary = [];
+            if (result.deleted_broken_records > 0) summary.push(`Fixed ${result.deleted_broken_records} broken database records.`);
+            const totalOrphans = result.deleted_orphan_images + result.deleted_orphan_thumbnails;
+            if (totalOrphans > 0) summary.push(`Removed ${totalOrphans} orphaned files.`);
+            if (result.regenerated_thumbnails > 0) summary.push(`Regenerated ${result.regenerated_thumbnails} missing thumbnails.`);
+            
+            let toastMessage = 'Scan complete. No issues found.';
+            if (summary.length > 0) {
+                toastMessage = `Scan complete: ${summary.join(' ')}`;
+            }
+            
+            showToast(toastMessage, 'success');
+
+        } catch (error) {
+            showToast(`Error: ${error.message}`, 'error');
+        } finally {
+            maintenanceScanBtn.disabled = false;
+            maintenanceScanBtn.textContent = 'Run Scan';
+        }
+    }
+
     // --- 3. INITIALIZATION ---
 
     /**
@@ -110,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle.addEventListener('change', handleThemeToggle);
         importFileInput.addEventListener('change', handleImport);
         factoryResetBtn.addEventListener('click', handleFactoryReset);
+        maintenanceScanBtn.addEventListener('click', handleMaintenanceScan);
     }
 
     initialize();

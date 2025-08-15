@@ -869,6 +869,90 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
         "message": f"Import complete. Added {imported_count} new images and skipped {skipped_count} duplicates."
     })
 
+@app.post("/api/maintenance/run_full_scan")
+def api_run_full_maintenance_scan(db: Session = Depends(get_db)):
+    """
+    Performs a comprehensive scan and fixes all data inconsistencies.
+    - Step 1: Deletes database records that point to non-existent image files.
+    - Step 2: Deletes orphaned image and thumbnail files that have no database record.
+    - Step 3: Regenerates any missing thumbnails for valid images.
+    """
+    # --- Step 1: Find and delete broken database records ---
+    all_db_images = db.query(Image).all()
+    images_dir = os.path.join(MEDIA_DIR, "images")
+    deleted_records_count = 0
+
+    for image in all_db_images:
+        image_path = os.path.join(images_dir, image.filename)
+        if not os.path.exists(image_path):
+            db.delete(image)
+            deleted_records_count += 1
+            print(f"INFO:     Deleting broken DB record for missing file: {image.filename}")
+    
+    # Commit changes to the DB so the next steps have an accurate source of truth.
+    if deleted_records_count > 0:
+        db.commit()
+
+    # --- Step 2: Prune Orphaned Files ---
+    # We must re-fetch the valid filenames now that broken records have been removed.
+    try:
+        valid_filenames = {result[0] for result in db.query(Image.filename).all()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to query database: {e}")
+
+    deleted_orphan_images_count = 0
+    try:
+        for filename in os.listdir(images_dir):
+            if filename not in valid_filenames:
+                file_path = os.path.join(images_dir, filename)
+                try:
+                    os.remove(file_path)
+                    deleted_orphan_images_count += 1
+                except OSError as e:
+                    print(f"ERROR:    Could not delete orphan image {file_path}. Reason: {e}")
+    except FileNotFoundError:
+        pass
+
+    deleted_orphan_thumbnails_count = 0
+    expected_thumbnails = {f"{os.path.splitext(f)[0]}.jpg" for f in valid_filenames}
+    try:
+        for filename in os.listdir(THUMBNAIL_DIR):
+            if filename not in expected_thumbnails:
+                file_path = os.path.join(THUMBNAIL_DIR, filename)
+                try:
+                    os.remove(file_path)
+                    deleted_orphan_thumbnails_count += 1
+                except OSError as e:
+                    print(f"ERROR:    Could not delete orphan thumbnail {file_path}. Reason: {e}")
+    except FileNotFoundError:
+        pass
+
+    # --- Step 3: Regenerate Missing Thumbnails ---
+    # We query the DB one last time to ensure we are working with the clean list.
+    final_valid_images = db.query(Image).all()
+    regenerated_thumbnails_count = 0
+    
+    for image in final_valid_images:
+        original_path = os.path.join(images_dir, image.filename)
+        thumbnail_filename = f"{os.path.splitext(image.filename)[0]}.jpg"
+        thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+        
+        if not os.path.exists(thumbnail_path):
+            try:
+                # We already know the original_path exists from Step 1's cleanup
+                create_thumbnail(original_path, thumbnail_path)
+                regenerated_thumbnails_count += 1
+            except Exception as e:
+                print(f"ERROR:    Failed to regenerate thumbnail for {image.filename}. Reason: {e}")
+
+    return JSONResponse({
+        "message": "Full maintenance scan complete.",
+        "deleted_broken_records": deleted_records_count,
+        "deleted_orphan_images": deleted_orphan_images_count,
+        "deleted_orphan_thumbnails": deleted_orphan_thumbnails_count,
+        "regenerated_thumbnails": regenerated_thumbnails_count
+    })
+
 
 if __name__ == "__main__":
     import uvicorn
