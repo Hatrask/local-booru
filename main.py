@@ -218,6 +218,19 @@ def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
             
     return tags_to_process
 
+def get_nested_path_for_filename(filename: str) -> str:
+    """
+    Generates a nested directory path from the first four characters of a filename's stem.
+    A filename like 'd41d8cd98f00b204e9800998ecf8427e.jpg' results in 'd4/1d'.
+    This helps to avoid having too many files in a single directory.
+    """
+    # os.path.splitext() splits 'filename.ext' into ('filename', '.ext')
+    name_part = os.path.splitext(filename)[0]
+    if len(name_part) < 4:
+        return "" # Return empty for very short names to avoid errors
+    # Use the first two characters for the top-level directory, and the next two for the second-level.
+    return os.path.join(name_part[:2], name_part[2:4])
+
 def create_thumbnail(original_path: str, thumbnail_path: str, size: tuple = (600, 600)):
     """Creates a thumbnail for an image, preserving aspect ratio."""
     try:
@@ -300,7 +313,19 @@ def upload_images(
             extension = "jpg"
             
         unique_filename = f"{uuid.uuid4().hex}.{extension}"
-        path = os.path.join(MEDIA_DIR, "images", unique_filename)
+        
+        # --- Nested Directory Structure ---
+        # Create a nested path like 'd4/1d' from the filename 'd41d...'
+        nested_path = get_nested_path_for_filename(unique_filename)
+        
+        # Create the full destination directories for the image and thumbnail
+        image_dest_dir = os.path.join(MEDIA_DIR, "images", nested_path)
+        thumbnail_dest_dir = os.path.join(THUMBNAIL_DIR, nested_path)
+        os.makedirs(image_dest_dir, exist_ok=True)
+        os.makedirs(thumbnail_dest_dir, exist_ok=True)
+
+        # The final path includes the nested structure
+        path = os.path.join(image_dest_dir, unique_filename)
         
         try:
             # Reset the file stream again before the final write operation.
@@ -309,9 +334,9 @@ def upload_images(
             with open(path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-            # After saving the original, create its thumbnail
+            # After saving the original, create its thumbnail in the nested dir
             thumbnail_filename = f"{os.path.splitext(unique_filename)[0]}.jpg"
-            thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+            thumbnail_path = os.path.join(thumbnail_dest_dir, thumbnail_filename)
             create_thumbnail(path, thumbnail_path)
 
             image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
@@ -406,12 +431,23 @@ def api_get_images(
 
     total = query.count()
     images = query.order_by(desc(Image.id)).offset((page - 1) * limit).limit(limit).all()
+    
     # The API now returns a list of tag objects, each with a name and category.
-    result = [{
-        "id": image.id, 
-        "filename": image.filename, 
-        "tags": sorted([{"name": tag.name, "category": tag.category} for tag in image.tags], key=lambda t: (t['category'], t['name']))
-    } for image in images]
+    # It also constructs the full nested path for the frontend.
+    result = []
+    for image in images:
+        filename = image.filename
+        nested_path = get_nested_path_for_filename(filename)
+        
+        # We use os.path.join and then replace backslashes to ensure cross-platform URL compatibility.
+        full_filename_path = os.path.join(nested_path, filename).replace('\\', '/')
+        
+        result.append({
+            "id": image.id, 
+            "filename": full_filename_path, 
+            "tags": sorted([{"name": tag.name, "category": tag.category} for tag in image.tags], key=lambda t: (t['category'], t['name']))
+        })
+
     return JSONResponse({"images": result, "page": page, "limit": limit, "total": total, "has_more": (page * limit) < total})
 
 @app.get("/api/tags/recent")
@@ -461,13 +497,16 @@ def api_batch_delete_images(image_ids: List[int] = Form(...), db: Session = Depe
     images_to_delete = db.query(Image).filter(Image.id.in_(image_ids)).all()
     deleted_count = 0
     for image in images_to_delete:
+        # Get the nested path to locate the file on disk
+        nested_path = get_nested_path_for_filename(image.filename)
+        
         # Delete original image
-        image_path = os.path.join(MEDIA_DIR, "images", image.filename)
+        image_path = os.path.join(MEDIA_DIR, "images", nested_path, image.filename)
         if os.path.exists(image_path): os.remove(image_path)
         
         # Delete thumbnail
         thumbnail_filename = f"{os.path.splitext(image.filename)[0]}.jpg"
-        thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+        thumbnail_path = os.path.join(THUMBNAIL_DIR, nested_path, thumbnail_filename)
         if os.path.exists(thumbnail_path): os.remove(thumbnail_path)
             
         db.delete(image)
@@ -483,14 +522,17 @@ def api_delete_image(image_id: int, db: Session = Depends(get_db)):
     if not image:
         raise HTTPException(status_code=404, detail="Image not found.")
 
+    # Get the nested path to locate the file on disk
+    nested_path = get_nested_path_for_filename(image.filename)
+
     # Delete original image
-    image_path = os.path.join(MEDIA_DIR, "images", image.filename)
+    image_path = os.path.join(MEDIA_DIR, "images", nested_path, image.filename)
     if os.path.exists(image_path):
         os.remove(image_path)
 
     # Delete thumbnail
     thumbnail_filename = f"{os.path.splitext(image.filename)[0]}.jpg"
-    thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+    thumbnail_path = os.path.join(THUMBNAIL_DIR, nested_path, thumbnail_filename)
     if os.path.exists(thumbnail_path):
         os.remove(thumbnail_path)
 
@@ -728,8 +770,13 @@ async def api_export_collection(db: Session = Depends(get_db)):
             
             images_dir = os.path.join(MEDIA_DIR, "images")
             for image_meta in images_metadata:
-                source_path = os.path.join(images_dir, image_meta["filename"])
-                archive_path = os.path.join("images", image_meta["filename"])
+                # Find the source file in its nested directory
+                filename = image_meta["filename"]
+                nested_path = get_nested_path_for_filename(filename)
+                source_path = os.path.join(images_dir, nested_path, filename)
+                
+                # The archive path remains flat to ensure import compatibility
+                archive_path = os.path.join("images", filename)
                 if os.path.exists(source_path):
                     zipf.write(source_path, archive_path)
     
@@ -783,7 +830,7 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
     """
     Imports a collection from a previously exported .zip file.
     ...
-    4. For each new image, it copies the image file AND generates a new thumbnail.
+    4. For each new image, it copies the image file AND generates a new thumbnail into a nested directory structure.
     5. Add the new images and their tags to the database.
     """
     if not file.filename.endswith('.zip'):
@@ -834,18 +881,24 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
                 skipped_count += 1
                 continue
             
-            # 3. Copy the physical image file.
-            source_image_path = os.path.join(images_dir_path, image_data['filename'])
-            dest_image_path = os.path.join(MEDIA_DIR, "images", image_data['filename'])
+            # 3. Copy the physical image file into a nested directory structure.
+            filename = image_data['filename']
+            source_image_path = os.path.join(images_dir_path, filename)
             
             if not os.path.exists(source_image_path):
                 continue # Skip if the image file is missing from the archive
             
+            nested_path = get_nested_path_for_filename(filename)
+            dest_image_dir = os.path.join(MEDIA_DIR, "images", nested_path)
+            os.makedirs(dest_image_dir, exist_ok=True)
+            dest_image_path = os.path.join(dest_image_dir, filename)
             shutil.copy(source_image_path, dest_image_path)
             
-            # 4. Generate thumbnail for the newly imported image.
-            thumbnail_filename = f"{os.path.splitext(image_data['filename'])[0]}.jpg"
-            thumbnail_path = os.path.join(THUMBNAIL_DIR, thumbnail_filename)
+            # 4. Generate thumbnail for the newly imported image in its own nested directory.
+            thumbnail_filename = f"{os.path.splitext(filename)[0]}.jpg"
+            thumbnail_dest_dir = os.path.join(THUMBNAIL_DIR, nested_path)
+            os.makedirs(thumbnail_dest_dir, exist_ok=True)
+            thumbnail_path = os.path.join(thumbnail_dest_dir, thumbnail_filename)
             create_thumbnail(dest_image_path, thumbnail_path)
             
             # 5. Get or create tags for the new image.
@@ -854,7 +907,7 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
             
             # 6. Create the new Image database record.
             new_image = Image(
-                filename=image_data['filename'],
+                filename=filename,
                 sha256_hash=image_data['sha256_hash'],
                 tags=tags_for_image
             )
