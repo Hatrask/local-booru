@@ -54,7 +54,7 @@ function getTagCategoryClass(category) {
 function renderTagPills(tags, isEditable = false) {
     if (!tags || tags.length === 0) {
         // Provide a default for non-editable contexts, and nothing for editable ones.
-        return !isEditable ? '<a href="/gallery?q=untagged" class="tag-name-link tag-pill tag-metadata">untagged</a>' : '';
+        return !isEditable ? '<a href="?q=untagged" class="tag-name-link tag-pill tag-metadata">untagged</a>' : '';
     }
     return tags.map(tag => {
         const categoryClass = getTagCategoryClass(tag.category);
