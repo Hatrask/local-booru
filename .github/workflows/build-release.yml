@@ -17,6 +17,8 @@ jobs:
   build-windows:
     # Specifies that this job will run on the latest version of a Windows virtual machine provided by GitHub.
     runs-on: windows-latest
+    permissions:
+        contents: write
 
     # The sequence of steps that the job will execute.
     steps:
