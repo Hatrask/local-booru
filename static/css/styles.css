@@ -836,7 +836,7 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 
 /* --- 3.9 Settings Page --- */
 .settings-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: auto;
     text-align: left;
 }
