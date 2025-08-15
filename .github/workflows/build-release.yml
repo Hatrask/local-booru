@@ -1,0 +1,64 @@
+# A human-readable name for the workflow, which will be displayed in the "Actions" tab on GitHub.
+name: Build and Release Executable
+
+# --- TRIGGER ---
+# This workflow will run automatically when you push a new tag that starts with 'v' (e.g., v1.6.0, v1.6.1).
+# It also allows you to run it manually from the GitHub Actions tab (workflow_dispatch).
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+# --- JOBS ---
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel.
+jobs:
+  # This job is named 'build-windows'. You could add other jobs for 'build-linux', etc.
+  build-windows:
+    # Specifies that this job will run on the latest version of a Windows virtual machine provided by GitHub.
+    runs-on: windows-latest
+
+    # The sequence of steps that the job will execute.
+    steps:
+      # Step 1: Check out your repository code so the workflow can access it.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up a specific version of Python on the virtual machine.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' # You can specify the Python version you use.
+
+      # Step 3: Install your project's dependencies from requirements.txt, and also install PyInstaller.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      # Step 4: Run the PyInstaller build command using your .spec file.
+      - name: Build with PyInstaller
+        run: pyinstaller local-booru.spec
+
+      # Step 5: Package the output directory into a .zip file for easy distribution.
+      # The ${{ github.ref_name }} variable automatically gets the name of the tag (e.g., 'v1.6.0').
+      - name: Package release assets
+        run: |
+          $release_name = "local-booru-${{ github.ref_name }}-windows"
+          Compress-Archive -Path dist/local-booru -DestinationPath "dist/$release_name.zip"
+        shell: powershell
+
+      # Step 6: Create a formal GitHub Release and upload the .zip file as an asset.
+      # This uses a popular, pre-made action to handle the release creation.
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # The name of the release. Will be something like "Release v1.6.0".
+          name: Release ${{ github.ref_name }}
+          # The body of the release. You can manually edit this on GitHub later to add release notes.
+          body: "Official release of local-booru ${{ github.ref_name }}. Download the windows.zip file below."
+          # A list of files to upload as release assets.
+          files: dist/*.zip
+          # Marks the release as a stable release (not a pre-release).
+          prerelease: false
