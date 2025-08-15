@@ -2,8 +2,7 @@
 
 A simple, self-hosted image gallery (booru) with a focus on powerful tagging and a clean, single-user interface. This project is designed for individuals who want to organize their personal image collections locally with the privacy and control of self-hosting.
 
-![Gallery Screenshot](https://i.ibb.co/KzXXbhrJ/2025-08-04-19-31.jpg)
-![](https://i.ibb.co/nNwd88cc/2025-08-04-19-31-1.jpg)
+![Project Screenshots](https://github.com/user-attachments/assets/44dcc9b8-7ea0-4cb0-8f8b-cbe6502909c9)
 
 ## Features
 
