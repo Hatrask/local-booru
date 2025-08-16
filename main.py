@@ -212,7 +212,7 @@ def get_or_create_tags(db: Session, raw_tag_inputs: set) -> List[Tag]:
     db.flush()
 
     # "Touch" all processed tags to update their usage timestamp.
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for tag in tags_to_process:
         tag.last_used_at = now
             
@@ -718,7 +718,7 @@ def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form
             image.tags.append(tag_to_keep)
 
     # After merging, the kept tag has been "used", so update its timestamp.
-    tag_to_keep.last_used_at = datetime.utcnow()
+    tag_to_keep.last_used_at = datetime.now(timezone.utc)
     
     tag_to_delete.images.clear()
     db.delete(tag_to_delete)
