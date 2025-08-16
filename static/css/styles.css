@@ -927,6 +927,7 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     display: inline-block;
     width: 50px;
     height: 28px;
+    flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -1132,6 +1133,13 @@ input:checked + .toggle-slider:before {
         gap: 0.5rem;
     }
 
+    #selection-controls button {
+        margin: 0; /* Override desktop margin */
+        flex-grow: 1;
+        /* Set a base width to ensure no more than two buttons can fit on a single line. */
+        flex-basis: 40%;
+    }
+
     /* --- 4.5 Gallery Page Mobile Tweaks --- */
     #thumbnail-controls {
         display: none;
@@ -1147,9 +1155,12 @@ input:checked + .toggle-slider:before {
 
     /* --- 4.6 Lightbox Mobile Tweaks --- */
     
-    /* Hide the hamburger menu when the lightbox is active to prevent overlap.
-       This uses a modern CSS selector that is now widely supported. */
+    /* Hide the hamburger menu when the lightbox is active to prevent overlap */
     body:has(#lightbox-modal[style*="display: flex"]) .mobile-nav-toggle {
+        display: none;
+    }
+
+    body:has(.index-page-container) #index-header {
         display: none;
     }
 
