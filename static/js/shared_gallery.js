@@ -39,6 +39,7 @@ function createGalleryManager(options) {
     let hasMorePages = true;
     let isLoading = false;
     let currentImagesOnPage = [];
+    let touchStartX = 0;
 
     /**
      * Fetches image data from the API and orchestrates the rendering of the page.
@@ -157,8 +158,57 @@ function createGalleryManager(options) {
         }
     }
 
+    /**
+     * Records the starting X position of a touch event on the gallery.
+     * @param {TouchEvent} e - The touch event.
+     */
+    function handleTouchStart(e) {
+        touchStartX = e.changedTouches[0].screenX;
+    }
+
+    /**
+     * Records the ending X position of a touch and calls the swipe handler.
+     * @param {TouchEvent} e - The touch event.
+     */
+    function handleTouchEnd(e) {
+        const touchEndX = e.changedTouches[0].screenX;
+        handleSwipeGesture(touchEndX);
+    }
+
+    /**
+     * Checks if a horizontal swipe was significant enough to trigger pagination.
+     * @param {number} touchEndX - The final X coordinate of the touch event.
+     */
+    function handleSwipeGesture(touchEndX) {
+        const lightboxIsOpen = document.getElementById('lightbox-modal')?.style.display === 'flex';
+        if (lightboxIsOpen) return;
+
+        const deltaX = touchEndX - touchStartX;
+        const swipeThreshold = 100; // Minimum distance in pixels for a swipe
+
+        // --- Swipe Left (Next Page) ---
+        if (deltaX < -swipeThreshold) {
+            const nextBtn = document.querySelector('.next-page-btn');
+            if (nextBtn && !nextBtn.disabled) {
+                loadPage(currentPage + 1);
+            }
+        }
+        
+        // --- Swipe Right (Previous Page) ---
+        if (deltaX > swipeThreshold) {
+            const prevBtn = document.querySelector('.prev-page-btn');
+            if (prevBtn && !prevBtn.disabled) {
+                loadPage(currentPage - 1);
+            }
+        }
+    }
+
+
     // --- INITIALIZATION ---
     document.addEventListener('keydown', handleKeydown);
+    galleryGridEl.addEventListener('touchstart', handleTouchStart);
+    galleryGridEl.addEventListener('touchend', handleTouchEnd);
+
     window.addEventListener('popstate', (e) => {
         const newPage = e.state?.page || 1;
         if (newPage !== currentPage) {

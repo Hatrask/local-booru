@@ -491,6 +491,10 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .action-button.danger { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 .action-button.danger:hover { background-color: #c53030; border-color: #c53030; }
 
+#pagination-top {
+	display: none;
+}
+
 /* --- 3.3.1 Lightbox Overhaul --- */
 #lightbox-content {
     display: flex;
@@ -1136,6 +1140,10 @@ input:checked + .toggle-slider:before {
     .gallery {
         column-count: 1;
     }
+
+	#pagination-top {
+		display: block;
+	}
 
     /* --- 4.6 Lightbox Mobile Tweaks --- */
     
