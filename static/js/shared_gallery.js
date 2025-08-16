@@ -17,7 +17,7 @@
  * @param {string} options.searchQuery - The initial search query.
  * @param {number} options.imagesPerPage - The number of images to display per page.
  * @param {HTMLElement} options.galleryGridEl - The container element for the image grid.
- * @param {HTMLElement} options.paginationEl - The container element for pagination controls.
+ * @param {string} options.paginationContainersSelector - A CSS selector for all pagination container elements (e.g., '.pagination').
  * @param {string} options.pageUrl - The base URL for the page (e.g., '/gallery' or '/batch_actions').
  * @param {Function} options.renderItem - A callback function to render a single item in the grid. Can be async.
  * @param {Function} [options.onPageLoad] - An optional callback that fires after a new page of images is loaded.
@@ -27,7 +27,7 @@ function createGalleryManager(options) {
         searchQuery,
         imagesPerPage,
         galleryGridEl,
-        paginationEl,
+        paginationContainersSelector, // Changed from paginationEl
         pageUrl,
         renderItem,
         onPageLoad
@@ -39,6 +39,7 @@ function createGalleryManager(options) {
     let hasMorePages = true;
     let isLoading = false;
     let currentImagesOnPage = [];
+    let touchStartX = 0;
 
     /**
      * Fetches image data from the API and orchestrates the rendering of the page.
@@ -70,8 +71,6 @@ function createGalleryManager(options) {
             await renderGallery(data.images);
             renderPagination();
             
-            // NOTE: The onPageLoad callback in gallery.js can now be simplified.
-            // It no longer needs to handle rendering itself.
             if (typeof onPageLoad === 'function') {
                 onPageLoad(data.images);
             }
@@ -102,24 +101,35 @@ function createGalleryManager(options) {
 
 
     /**
-     * Renders the pagination controls.
+     * Renders the pagination controls into all specified containers.
+     * This now uses a selector to support multiple pagination areas (e.g., top and bottom).
      */
     function renderPagination() {
-        paginationEl.innerHTML = '';
+        const paginationContainers = document.querySelectorAll(paginationContainersSelector);
+        if (paginationContainers.length === 0) return;
+
+        // Clear all containers first
+        paginationContainers.forEach(container => container.innerHTML = '');
+
         if (totalImages === 0) return;
 
-        paginationEl.innerHTML = `
+        const paginationHTML = `
             <p style="margin-bottom: 0.5rem;">Page ${currentPage} of ${totalPages} (${totalImages} images)</p>
-            <button id="prev-page" ${currentPage <= 1 ? 'disabled' : ''}>← Previous</button>
-            <button id="next-page" ${!hasMorePages ? 'disabled' : ''}>Next →</button>
+            <button class="prev-page-btn" ${currentPage <= 1 ? 'disabled' : ''}>← Previous</button>
+            <button class="next-page-btn" ${!hasMorePages ? 'disabled' : ''}>Next →</button>
         `;
 
-        document.getElementById('prev-page').addEventListener('click', () => loadPage(currentPage - 1));
-        document.getElementById('next-page').addEventListener('click', () => loadPage(currentPage + 1));
+        // Populate all containers and attach event listeners
+        paginationContainers.forEach(container => {
+            container.innerHTML = paginationHTML;
+            container.querySelector('.prev-page-btn').addEventListener('click', () => loadPage(currentPage - 1));
+            container.querySelector('.next-page-btn').addEventListener('click', () => loadPage(currentPage + 1));
+        });
     }
 
     /**
      * Handles global keydown events for pagination shortcuts.
+     * Now uses class selectors to find the first available pagination button.
      * @param {KeyboardEvent} e - The keyboard event.
      */
     function handleKeydown(e) {
@@ -131,14 +141,16 @@ function createGalleryManager(options) {
         switch (e.key.toLowerCase()) {
             case 'a':
             case 'arrowleft':
-                const prevBtn = document.getElementById('prev-page');
+                // Find the first available previous button on the page
+                const prevBtn = document.querySelector('.prev-page-btn');
                 if (prevBtn && !prevBtn.disabled) {
                     loadPage(currentPage - 1);
                 }
                 break;
             case 'd':
             case 'arrowright':
-                const nextBtn = document.getElementById('next-page');
+                // Find the first available next button on the page
+                const nextBtn = document.querySelector('.next-page-btn');
                 if (nextBtn && !nextBtn.disabled) {
                     loadPage(currentPage + 1);
                 }
@@ -146,8 +158,57 @@ function createGalleryManager(options) {
         }
     }
 
+    /**
+     * Records the starting X position of a touch event on the gallery.
+     * @param {TouchEvent} e - The touch event.
+     */
+    function handleTouchStart(e) {
+        touchStartX = e.changedTouches[0].screenX;
+    }
+
+    /**
+     * Records the ending X position of a touch and calls the swipe handler.
+     * @param {TouchEvent} e - The touch event.
+     */
+    function handleTouchEnd(e) {
+        const touchEndX = e.changedTouches[0].screenX;
+        handleSwipeGesture(touchEndX);
+    }
+
+    /**
+     * Checks if a horizontal swipe was significant enough to trigger pagination.
+     * @param {number} touchEndX - The final X coordinate of the touch event.
+     */
+    function handleSwipeGesture(touchEndX) {
+        const lightboxIsOpen = document.getElementById('lightbox-modal')?.style.display === 'flex';
+        if (lightboxIsOpen) return;
+
+        const deltaX = touchEndX - touchStartX;
+        const swipeThreshold = 100; // Minimum distance in pixels for a swipe
+
+        // --- Swipe Left (Next Page) ---
+        if (deltaX < -swipeThreshold) {
+            const nextBtn = document.querySelector('.next-page-btn');
+            if (nextBtn && !nextBtn.disabled) {
+                loadPage(currentPage + 1);
+            }
+        }
+        
+        // --- Swipe Right (Previous Page) ---
+        if (deltaX > swipeThreshold) {
+            const prevBtn = document.querySelector('.prev-page-btn');
+            if (prevBtn && !prevBtn.disabled) {
+                loadPage(currentPage - 1);
+            }
+        }
+    }
+
+
     // --- INITIALIZATION ---
     document.addEventListener('keydown', handleKeydown);
+    galleryGridEl.addEventListener('touchstart', handleTouchStart);
+    galleryGridEl.addEventListener('touchend', handleTouchEnd);
+
     window.addEventListener('popstate', (e) => {
         const newPage = e.state?.page || 1;
         if (newPage !== currentPage) {

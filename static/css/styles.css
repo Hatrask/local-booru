@@ -4,6 +4,7 @@
    1. Global Styles & Root Variables
    2. Reusable Components
    3. Page-Specific Styles
+   4. Mobile & Responsive Styles
    ========================================================================== */
 
 
@@ -64,6 +65,11 @@ body {
     background-color: var(--color-bg-primary);
     color: var(--color-text-primary);
     text-align: center;
+}
+
+/* This class will be toggled by JS to prevent scrolling when the mobile menu is open */
+body.no-scroll {
+    overflow: hidden;
 }
 
 h1 { font-size: 2.5rem; margin-bottom: 1rem; }
@@ -194,6 +200,15 @@ a.tag-pill:hover { filter: brightness(1.2); }
     border-radius: var(--border-radius);
 }
 
+#lightbox-favorite-btn {
+
+}
+
+.action-button.favorite-toggle {
+    background-color: var(--tag-color-favorite);
+    color: #111;
+    font-weight: bold;
+}
 
 /* --- 2.3 Toast Notifications --- */
 #toast-container {
@@ -277,6 +292,25 @@ a.tag-pill:hover { filter: brightness(1.2); }
 
 .nav-link.active:hover {
     background-color: var(--color-accent-hover);
+}
+
+/* This is the hamburger menu button. It's hidden by default on larger screens. */
+.mobile-nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 1001; /* Ensure it's on top of other header content */
+    padding: 0.5rem;
+}
+
+.mobile-nav-toggle span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background-color: var(--color-text-primary);
+    margin: 5px 0;
+    transition: all 0.3s ease-in-out;
 }
 
 
@@ -444,16 +478,22 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .lightbox-info h4 { margin: 0; padding-bottom: 0.5rem; }
 .lightbox-info .tag-pills-container { justify-content: center; }
 
-#pagination { text-align: center; }
-#pagination button {
+.pagination { text-align: center; }
+#pagination-top { margin-bottom: 2rem; }
+#pagination-bottom { margin-top: 2rem; }
+.pagination button {
     padding: 0.5rem 1rem; margin: 0 0.2rem; cursor: pointer;
     border: 1px solid var(--color-border); background-color: var(--color-bg-tertiary);
     color: var(--color-text-primary); border-radius: var(--border-radius);
 }
-#pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
+.pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
 .lightbox-actions { display: flex; justify-content: center; gap: 1rem; }
 .action-button.danger { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
 .action-button.danger:hover { background-color: #c53030; border-color: #c53030; }
+
+#pagination-top {
+	display: none;
+}
 
 /* --- 3.3.1 Lightbox Overhaul --- */
 #lightbox-content {
@@ -887,6 +927,7 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     display: inline-block;
     width: 50px;
     height: 28px;
+    flex-shrink: 0;
 }
 
 .toggle-switch input {
@@ -986,4 +1027,198 @@ input:checked + .toggle-slider:before {
     width: 100%;
     height: 100%;
     cursor: pointer;
+}
+
+
+/* ==========================================================================
+   4. Mobile & Responsive Styles
+   ========================================================================== */
+
+/* This media query targets tablets and mobile phones. */
+@media (max-width: 768px) {
+
+    /* --- 4.1 Global Adjustments --- */
+    body {
+        /* Reduce padding on the sides for more content space */
+        padding: 1rem;
+    }
+    .main-header {
+        /* Adjust header padding to match the new body padding */
+        margin-left: -1rem;
+        margin-right: -1rem;
+        margin-top: -1rem;
+        padding: 0 1rem;
+    }
+    .header-content {
+        height: 60px; /* Make the header shorter on mobile */
+        padding: 0 1rem;
+    }
+
+
+    /* --- 4.2 Mobile Navigation --- */
+    .main-header nav {
+        /* Hide the navigation links by default. We will transform them
+           into a slide-out or full-screen menu. */
+        display: none;
+    }
+    .mobile-nav-toggle {
+        /* Show the hamburger button */
+        display: block;
+    }
+    
+    /* When the menu is open (body has 'no-scroll'), we create a full-screen overlay */
+    nav#main-nav.active {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 1.5rem;
+        
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--color-bg-primary);
+        z-index: 1000;
+    }
+
+    /* Style the links inside the mobile menu for better visibility and touch targets */
+    nav#main-nav.active .nav-link {
+        font-size: 1.5rem; /* Larger text for easier tapping */
+        padding: 1rem 2rem;
+    }
+
+
+    /* --- 4.3 Hamburger Icon Animation --- */
+    /* Animate the hamburger icon to an 'X' when the menu is active */
+    .mobile-nav-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(6px, 6px);
+    }
+    .mobile-nav-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+    .mobile-nav-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(6px, -6px);
+    }
+
+    /* --- 4.4 Page-Specific Tweaks --- */
+    
+    /* Reduce font size for main headings on smaller screens */
+    h1 {
+        font-size: 2rem;
+    }
+
+    /* Make search forms more compact */
+    form.search-form-index,
+    form.search-form {
+        flex-direction: column;
+    }
+    form.search-form-index input[type="text"],
+    form.search-form input[type="text"] {
+        border-right: 1px solid var(--color-border);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    form.search-form-index button,
+    form.search-form button {
+        width: 100%;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+    }
+
+    /* Make batch action buttons stack for better usability */
+    #selection-controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    #selection-controls button {
+        margin: 0; /* Override desktop margin */
+        flex-grow: 1;
+        /* Set a base width to ensure no more than two buttons can fit on a single line. */
+        flex-basis: 40%;
+    }
+
+    /* --- 4.5 Gallery Page Mobile Tweaks --- */
+    #thumbnail-controls {
+        display: none;
+    }
+
+    .gallery {
+        column-count: 1;
+    }
+
+	#pagination-top {
+		display: block;
+	}
+
+    /* --- 4.6 Lightbox Mobile Tweaks --- */
+    
+    /* Hide the hamburger menu when the lightbox is active to prevent overlap */
+    body:has(#lightbox-modal[style*="display: flex"]) .mobile-nav-toggle {
+        display: none;
+    }
+
+    body:has(.index-page-container) #index-header {
+        display: none;
+    }
+
+    #lightbox-content {
+        flex-direction: column;
+        border-radius: 0;
+        padding: 0.5rem;
+        box-sizing: border-box;
+    }
+
+    /* The image container becomes a column, allowing content to sit below the image */
+    #lightbox-image-container {
+        flex-direction: column;
+        flex-grow: 1;
+        padding: 0;
+        min-height: 0; /* A common flexbox fix to prevent overflow */
+    }
+
+    #lightbox-image {
+        max-height: 100%;
+    }
+
+    /* The desktop overlay is repurposed as a static action bar at the bottom */
+    #lightbox-view-mode-content {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        width: 100%;
+        background: none;
+        border: none;
+        box-shadow: none;
+        padding: 0.5rem 0;
+        margin-top: 0.5rem;
+        flex-shrink: 0; /* Prevent the action bar from being squished */
+    }
+
+    /* Ensure the hover effect from desktop is disabled */
+    #lightbox-image-container:hover #lightbox-view-mode-content {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* To save space, hide the tag list and image ID in the mobile view */
+    #lightbox-view-mode-content h4,
+    #lightbox-view-mode-content .tag-pills-container {
+        display: none;
+    }
+
+    /* Center the buttons in the action bar */
+    #lightbox-view-mode-content .lightbox-actions {
+        margin-top: 0;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    /* Make the buttons fill the space for easier tapping */
+    #lightbox-view-mode-content .lightbox-actions .action-button {
+        flex-grow: 1;
+        max-width: 33%;
+    }
 }

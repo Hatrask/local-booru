@@ -27,8 +27,13 @@
         <button data-size="600">Large</button>
     </div>
 
+    <!-- Top pagination container for easier navigation -->
+    <div id="pagination-top" class="pagination"></div>
+
     <div id="gallery-grid" class="gallery"></div>
-    <div id="pagination" style="text-align: center; margin-top: 2rem;"></div>
+    
+    <!-- Bottom pagination container -->
+    <div id="pagination-bottom" class="pagination"></div>
 
     <div id="lightbox-modal">
         <span id="lightbox-close">×</span>
@@ -46,6 +51,7 @@
                     <h4 id="lightbox-image-id"></h4>
                     <div class="tag-pills-container"></div>
                     <div class="lightbox-actions">
+                         <button id="lightbox-favorite-btn" class="action-button" title="Favorite (F)">Favorite</button>
                          <button id="lightbox-edit-btn" class="action-button" title="Edit (E)">Edit Tags</button>
                          <button id="lightbox-delete-btn" class="action-button danger" title="Delete (Shift+D)">Delete</button>
                     </div>
