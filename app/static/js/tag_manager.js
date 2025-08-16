@@ -58,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tagsToRender = tagsToRender.filter(tag => tag.name.toLowerCase().includes(filterText));
         }
         if (showOrphansOnlyCheckbox.checked) {
-            tagsToRender = tagsToRender.filter(tag => tag.count === 0);
+            tagsToRender = tagsToRender.filter(tag => tag.count === 0 && !(tag.name === 'favorite' && tag.category === 'metadata'));
         }
 
         if (currentSort === 'name') {
