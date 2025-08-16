@@ -6,9 +6,9 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('static', 'static'),
-        ('templates', 'templates'),
-        ('media', 'media')
+        ('app/static', 'app/static'),
+        ('app/templates', 'app/templates')
+						  
     ],
     hiddenimports=[],
     hookspath=[],
