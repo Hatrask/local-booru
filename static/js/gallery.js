@@ -39,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const lightboxViewModeContent = document.getElementById('lightbox-view-mode-content');
     const lightboxImageId = lightboxViewModeContent.querySelector('#lightbox-image-id');
     const lightboxTagsDisplay = lightboxViewModeContent.querySelector('.tag-pills-container');
+    const lightboxFavoriteBtn = lightboxViewModeContent.querySelector('#lightbox-favorite-btn');
     const lightboxEditBtn = lightboxViewModeContent.querySelector('#lightbox-edit-btn');
     const lightboxDeleteBtn = lightboxViewModeContent.querySelector('#lightbox-delete-btn');
     
@@ -151,17 +152,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // --- View Mode Setup ---
         lightboxImageId.textContent = `Image ID: ${image.id}`;
-        lightboxTagsDisplay.innerHTML = renderTagPills(image.tags, false);
-
-		// Add class for favorite tags
+        
         const isFavorite = image.tags.some(tag => tag.category === 'metadata' && tag.name === 'favorite');
-        if (isFavorite) {
-            const favoritePill = Array.from(lightboxTagsDisplay.querySelectorAll('.tag-metadata'))
-                                      .find(pill => pill.textContent.trim() === 'favorite');
-            if (favoritePill) {
-                favoritePill.dataset.tag = 'metadata:favorite';
-            }
+        
+        // Toggle the 'favorite-toggle' class on the favorite button for styling.
+        if (lightboxFavoriteBtn) {
+            lightboxFavoriteBtn.classList.toggle('favorite-toggle', isFavorite);
         }
+        
+        // Filter out the 'metadata:favorite' tag before rendering the pills, as the button state is now the indicator.
+        const tagsToDisplay = image.tags.filter(tag => !(tag.category === 'metadata' && tag.name === 'favorite'));
+        lightboxTagsDisplay.innerHTML = renderTagPills(tagsToDisplay, false);
 
         // --- Button data attributes ---
         lightboxDeleteBtn.dataset.imageId = image.id;
@@ -568,6 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Lightbox state change listeners
         lightboxEditBtn.addEventListener('click', () => setLightboxMode('edit'));
+        lightboxFavoriteBtn.addEventListener('click', toggleFavorite);
         lightboxCancelBtn.addEventListener('click', () => {
             setLightboxMode('view');
             showImageInLightbox(currentImages[currentImageIndex]);

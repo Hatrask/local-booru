@@ -200,6 +200,15 @@ a.tag-pill:hover { filter: brightness(1.2); }
     border-radius: var(--border-radius);
 }
 
+#lightbox-favorite-btn {
+
+}
+
+.action-button.favorite-toggle {
+    background-color: var(--tag-color-favorite);
+    color: #111;
+    font-weight: bold;
+}
 
 /* --- 2.3 Toast Notifications --- */
 #toast-container {
@@ -1126,5 +1135,71 @@ input:checked + .toggle-slider:before {
 
     .gallery {
         column-count: 1;
+    }
+
+    /* --- 4.6 Lightbox Mobile Tweaks --- */
+    
+    /* Hide the hamburger menu when the lightbox is active to prevent overlap.
+       This uses a modern CSS selector that is now widely supported. */
+    body:has(#lightbox-modal[style*="display: flex"]) .mobile-nav-toggle {
+        display: none;
+    }
+
+    #lightbox-content {
+        flex-direction: column;
+        border-radius: 0;
+        padding: 0.5rem;
+        box-sizing: border-box;
+    }
+
+    /* The image container becomes a column, allowing content to sit below the image */
+    #lightbox-image-container {
+        flex-direction: column;
+        flex-grow: 1;
+        padding: 0;
+        min-height: 0; /* A common flexbox fix to prevent overflow */
+    }
+
+    #lightbox-image {
+        max-height: 100%;
+    }
+
+    /* The desktop overlay is repurposed as a static action bar at the bottom */
+    #lightbox-view-mode-content {
+        position: static;
+        opacity: 1;
+        visibility: visible;
+        width: 100%;
+        background: none;
+        border: none;
+        box-shadow: none;
+        padding: 0.5rem 0;
+        margin-top: 0.5rem;
+        flex-shrink: 0; /* Prevent the action bar from being squished */
+    }
+
+    /* Ensure the hover effect from desktop is disabled */
+    #lightbox-image-container:hover #lightbox-view-mode-content {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    /* To save space, hide the tag list and image ID in the mobile view */
+    #lightbox-view-mode-content h4,
+    #lightbox-view-mode-content .tag-pills-container {
+        display: none;
+    }
+
+    /* Center the buttons in the action bar */
+    #lightbox-view-mode-content .lightbox-actions {
+        margin-top: 0;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    /* Make the buttons fill the space for easier tapping */
+    #lightbox-view-mode-content .lightbox-actions .action-button {
+        flex-grow: 1;
+        max-width: 33%;
     }
 }
