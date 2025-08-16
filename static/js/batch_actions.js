@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. CONFIGURATION & DOM REFERENCES ---
     const IMAGES_PER_PAGE = 54;
     const galleryGrid = document.getElementById('gallery-grid');
-    const paginationDiv = document.getElementById('pagination');
     const selectedCountSpan = document.getElementById('selected-count');
     const batchTagsInput = document.getElementById('batchTagsInput');
     const actionSelect = document.getElementById('actionSelect');
@@ -91,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         searchQuery: query,
         imagesPerPage: IMAGES_PER_PAGE,
         galleryGridEl: galleryGrid,
-        paginationEl: paginationDiv,
+        paginationContainersSelector: '.pagination',
         pageUrl: '/batch_actions',
         renderItem: renderBatchItem,
         onPageLoad: (images) => {

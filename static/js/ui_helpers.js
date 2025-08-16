@@ -69,3 +69,31 @@ function renderTagPills(tags, isEditable = false) {
         }
     }).join('');
 }
+
+/**
+ * Toggles the mobile navigation menu.
+ * Finds the toggle button and the navigation menu by their IDs,
+ * and adds a click event listener to toggle the 'active' class on both.
+ * This allows CSS to control the visibility and styling of the mobile menu.
+ */
+function setupMobileNavigation() {
+    const navToggle = document.getElementById('mobile-nav-toggle');
+    const mainNav = document.getElementById('main-nav');
+
+    if (navToggle && mainNav) {
+        navToggle.addEventListener('click', () => {
+            // Toggle visibility of the navigation menu
+            mainNav.classList.toggle('active');
+            // Animate the hamburger icon (e.g., to an 'X')
+            navToggle.classList.toggle('active');
+            // Prevent the body from scrolling when the menu is open
+            document.body.classList.toggle('no-scroll');
+        });
+    }
+}
+
+// --- Main Event Listener ---
+// Ensures the DOM is fully loaded before our scripts run.
+document.addEventListener('DOMContentLoaded', () => {
+    setupMobileNavigation();
+});

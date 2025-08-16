@@ -1,5 +1,6 @@
 <head>
 	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="/static/css/styles.css">
     <script>
         (function() {
@@ -20,7 +21,7 @@
         <a href="/" class="logo-link">
             <h1>local-booru</h1>
         </a>
-        <nav>
+        <nav id="main-nav">
             <a href="/upload" class="nav-link {% if active_page == 'upload' %}active{% endif %}">Upload</a>
             <a href="/gallery" class="nav-link {% if active_page == 'gallery' %}active{% endif %}">Gallery</a>
             <a href="/batch_actions" class="nav-link {% if active_page == 'batch_actions' %}active{% endif %}">Batch Actions</a>
@@ -29,5 +30,11 @@
             <a href="/help" class="nav-link {% if active_page == 'help' %}active{% endif %}">Help</a>
             <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
         </nav>
+        <!-- This button is hidden on desktop and appears on mobile to toggle the menu. -->
+        <button id="mobile-nav-toggle" class="mobile-nav-toggle" aria-label="Menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
     </div>
 </header>

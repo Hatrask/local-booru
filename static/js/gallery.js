@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. DOM ELEMENT REFERENCES ---
     const galleryGrid = document.getElementById('gallery-grid');
-    const paginationDiv = document.getElementById('pagination');
+																
     const thumbnailControls = document.getElementById('thumbnail-controls');
     const mainTagInput = document.getElementById('tagInput');
     const mainSuggestionsBox = document.querySelector('.suggestions');
@@ -622,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
             searchQuery: query,
             imagesPerPage: IMAGES_PER_PAGE,
             galleryGridEl: galleryGrid,
-            paginationEl: paginationDiv,
+            paginationContainersSelector: '.pagination',
             pageUrl: '/gallery',
             renderItem: renderGalleryItem,
             onPageLoad: (images) => {
