@@ -346,7 +346,7 @@ def api_delete_image(image_id: int, db: Session = Depends(get_db)):
     return {"message": f"Successfully deleted image {image_id}."}
 
 
-@app.post("/batch_retag")
+@app.post("/api/images/batch_retag")
 def batch_retag(
     image_ids: List[int] = Form(...),
     tags: str = Form(""),
@@ -411,7 +411,7 @@ def batch_retag(
     db.commit()
     return JSONResponse({"message": "Batch tags updated successfully."})
 
-@app.post("/batch_undo")
+@app.post("/api/images/batch_undo")
 def batch_undo(db: Session = Depends(get_db)):
     """
     Reverts the last batch tag operation by reading from the undo state file.

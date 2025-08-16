@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		imageIds.forEach(id => payload.append("image_ids", id));
 
 		try {
-			const response = await fetch("/batch_retag", { method: "POST", body: payload });
+			const response = await fetch("/api/images/batch_retag", { method: "POST", body: payload });
 			const result = await response.json();
 			if (response.ok) {
 				showToast(result.message || 'Tags updated successfully!', 'success');
@@ -246,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			const confirmed = await showConfirmation("Are you sure you want to undo the last batch tag operation?");
 			if (!confirmed) return;
 			try {
-				const response = await fetch("/batch_undo", { method: "POST" });
+				const response = await fetch("/api/images/batch_undo", { method: "POST" });
 				const result = await response.json();
 				if (response.ok) {
 					showToast(result.message || 'Undo successful!', 'success');
