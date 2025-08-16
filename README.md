@@ -1,23 +1,22 @@
 # local-booru
 
-A simple, self-hosted image gallery (booru) with a focus on powerful tagging and a clean, single-user interface. This project is designed for individuals who want to organize their personal image collections locally with the privacy and control of self-hosting.
+A simple, self-hosted image gallery (booru) with a focus on powerful tagging and a clean, single-user web interface. I made this because I wasn't happy with the existing solutions. It probably won't, ever, be as powerful as something like hydrus or Danbooru, but I will try my best to build something nice.
+
+Please note that this program is in a very early stage of development and shouldn't be used to replace existing solutions.
 
 ![Project Screenshots](https://github.com/user-attachments/assets/44dcc9b8-7ea0-4cb0-8f8b-cbe6502909c9)
 
 ## Features
 
-*   **Duplicate File Prevention:** Calculates the SHA256 hash of each uploaded file to prevent adding duplicate images to your library.
-*   **Categorized Tagging:** Organizes tags into five distinct categories (`general`, `artist`, `character`, `copyright`, `metadata`). Tags are color-coded in the UI for quick identification.
-*   **Data Management UI:** Easily import and export your entire collection, or perform a factory reset, directly from the Settings page in the web interface.
-*   **Tag-Based Search Syntax:** Find images using a dedicated query language that supports `AND`, `OR`, `NOT`, and `wildcard (*)` logic, along with a special `untagged` keyword.
-*   **Saved & Recent Searches:** Automatically keeps a list of your recent queries. You can "pin" your most important searches for permanent access from the search bar.
-*   **Favorite Images:** Quickly add or remove images from your favorites with a single keypress (`F`) in the lightbox viewer.
-*   **Image Gallery with Integrated Editor:** Browse your collection in a masonry-style grid. Clicking an image opens a two-state lightbox:
-    *   **View Mode:** Navigate between images, view tags, use keyboard shortcuts for browsing, and favorite images.
-    *   **Edit Mode:** Switch to a side-panel view to edit an image's tags directly in the lightbox, with access to a helper panel for finding recent or existing tags.
-*   **Batch Tagging & Deletion:** A dedicated page for performing actions on multiple images at once. Selections persist across pages, and you can add, remove, replace, or delete tags in bulk.
-*   **Undo for Batch Operations:** Reverts the last batch *tagging* operation (add, remove, or replace). The undo state is saved to disk, so it persists even after an application restart.
+*   **Categorized Tagging:** Create and organize tags into five distinct categories (`general`, `artist`, `character`, `copyright`, `metadata`). Tags are color-coded in the UI for quick identification.
+*   **Tag-Based Search Syntax:** Find images using a dedicated query language that supports `AND`, `OR`, `NOT`, and `wildcard (*)` logic, along with special keywords like `untagged`.
+*   **Image Gallery with Viewer:** Shows your collection in a masonry-style grid. Clicking an image opens a lightbox with two modes:
+    *   **View Mode:** Navigate with shortcuts, view tags, favorite or delete images, or
+    *   **Edit Mode:** Switch to a side-panel view to edit image's tags directly from the lightbox, with recently used tags listed and a search bar.
+*   **Batch Tagging & Deletion:** A dedicated page for performing actions on multiple tags and images at once. Selections persist across pages.
 *   **Tag Maintenance Tools:** A dedicated page for database-level tag operations, including renaming, merging, deleting, and changing the category of any tag.
+*   **Saved & Recent Searches:** Automatically keeps a list of your recent queries. You can "pin" your most important searches here too.
+*   **Data Management:** Import and export your entire collection, or reset the application, directly from the Settings page in the web interface.
 
 ## Getting Started
 
@@ -35,11 +34,11 @@ For Windows users, the easiest way to get started is by using the pre-built appl
     *   Unzip the downloaded file to a folder of your choice.
 
 3.  **Run the application:**
-    *   Open the extracted folder and double-click the `local-booru.exe` (or similar) executable file.
-    *   The server will start in a command-line window.
+    *   Open the extracted folder and double-click the `local-booru.exe` executable file.
+    *   The server will start in a command-line prompt.
 
 4.  **Open the application:**
-    *   Open your web browser and navigate to **[http://1227.0.0.1:8000](http://127.0.0.1:8000)**.
+    *   Open your web browser and navigate to **[http://127.0.0.1:8000](http://127.0.0.1:8000)**.
 
 ### Manual Installation (All Platforms)
 
@@ -47,7 +46,7 @@ This method is for macOS, Linux, and Windows users who prefer to run the applica
 
 #### Prerequisites
 
-*   Python 3.7 or newer
+*   Python 3.11 or newer
 *   `pip` (Python's package installer)
 
 #### Instructions
@@ -88,12 +87,12 @@ This method is for macOS, Linux, and Windows users who prefer to run the applica
 
 ## How to Use
 
-1.  **Upload:** Go to the "Upload" page to add your first images. You can add categorized tags directly on upload (e.g., `artist:someartist, character:somechar, tag1`).
-2.  **Browse:** Navigate to the "Gallery" to see your collection. Press `T` to toggle the tag tooltips on and off.
-3.  **Search:** Use the search bar to filter images. You can now search by category (e.g., `character:reimu_hakurei`).
-4.  **View & Edit:** Click any image to open it in the lightbox. In **View Mode**, you can navigate between images or press `F` to favorite an image. Press `E` to switch to **Edit Mode**, where a sidebar appears, allowing you to modify the image's tags. Press `S` to save your changes or `Esc` to cancel and return to view mode.
-5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for larger-scale organization.
-6.  **Manage Data:** Visit the **Settings** page to import/export your collection or perform a factory reset.
+1.  **Upload:** Go to the "Upload" page to add your first images. You can tag images directly while uploading (e.g., `artist:someartist, character:somechar, tag1`).
+2.  **Browse:** Navigate to the "Gallery" to see your collection. Press `T` to toggle tooltips on and off.
+3.  **Search:** Use the search bar to filter images. Refer to the help page for detailed information on the search syntax.
+4.  **View & Edit:** Click any image to open it in the lightbox. Press `E` to quickly switch to **Edit Mode** and start tagging your collection.
+5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for large-scale organization.
+6.  **Manage Data:** Visit the **Settings** page to import/export your collection, or wipe all your data.
 
 ## File Structure
 
@@ -101,10 +100,10 @@ Your data is stored in the root directory of the project.
 
 *   `database.db`: The SQLite database file containing all image and tag information. It is automatically created and managed by the application.
 *   `media/images/`: All your uploaded image files are stored here.
-*	`media/images/thumbnails`: All the images will have a thumbnail stored in this directory to improve the performance of the application.
+*	`media/thumbnails/`: All the generated thumbnails are stored here.
 *   `undo_state.json`: This file is created temporarily when you perform a batch tag action, allowing you to undo it. It is deleted after a successful undo or overwritten by the next batch action.
 
-**Note:** Saved searches and theme preferences are stored directly in your web browser's `localStorage` and are not part of the server-side file structure.
+**Note:** Saved searches and theme preferences are stored directly in your web browser's `localStorage` and won't be wiped by the factory reset function from Settings. You have to do it manually.
 
 ## Contributing
 
