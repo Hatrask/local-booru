@@ -1204,8 +1204,7 @@ input:checked + .toggle-slider:before {
     }
 
     /* To save space, hide the tag list and image ID in the mobile view */
-    #lightbox-view-mode-content h4,
-    #lightbox-view-mode-content .tag-pills-container {
+    #lightbox-view-mode-content h4 {
         display: none;
     }
 
