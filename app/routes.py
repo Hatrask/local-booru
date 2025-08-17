@@ -78,77 +78,63 @@ def upload_images(
     db: Session = Depends(get_db),
 ):
     tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
-    tags_to_add = get_or_create_tags(db, tag_names)
     
-    # Initialize counters and a list to track failures for a detailed response.
     uploaded_count = 0
     failed_files = []
-    
-    # Fetch all existing hashes at once to minimize database queries inside the loop.
-    existing_hashes = {res[0] for res in db.query(Image.sha256_hash).all()}
 
     for file in files:
         try:
             if not file.content_type.startswith("image/"):
                 continue
 
-            # Reset the file's stream position to the beginning.
-            # This is crucial because calculate_sha256 will read the stream to the end.
             file.file.seek(0)
-            
             file_hash = calculate_sha256(file.file)
-            if file_hash in existing_hashes:
+
+            if db.query(Image).filter(Image.sha256_hash == file_hash).first():
                 continue
-            
+
             try:
-                # Use the content type to suggest a more reliable extension.
                 subtype = file.content_type.split('/')[-1]
                 extension = os.path.splitext(file.filename)[1].lstrip('.') or subtype or "jpg"
             except (IndexError, AttributeError):
                 extension = "jpg"
-                
+
             unique_filename = f"{uuid.uuid4().hex}.{extension}"
-            
-            # --- Nested Directory Structure ---
-            # Create a nested path like 'd4/1d' from the filename 'd41d...'
             nested_path = get_nested_path_for_filename(unique_filename)
             
-            # Create the full destination directories for the image and thumbnail
             image_dest_dir = os.path.join(MEDIA_DIR, "images", nested_path)
             thumbnail_dest_dir = os.path.join(THUMBNAIL_DIR, nested_path)
             os.makedirs(image_dest_dir, exist_ok=True)
             os.makedirs(thumbnail_dest_dir, exist_ok=True)
 
-            # The final path includes the nested structure
             path = os.path.join(image_dest_dir, unique_filename)
             
-            # Reset the file stream again before the final write operation.
-            # This ensures that shutil.copyfileobj can read the file from the beginning.
             file.file.seek(0)
             with open(path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
 
-            # After saving the original, create its thumbnail in the nested dir
             thumbnail_filename = f"{os.path.splitext(unique_filename)[0]}.jpg"
             thumbnail_path = os.path.join(thumbnail_dest_dir, thumbnail_filename)
             create_thumbnail(path, thumbnail_path)
 
+            tags_to_add = get_or_create_tags(db, tag_names)
+            
             image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
             db.add(image)
             
-            existing_hashes.add(file_hash)
+            db.commit()
+            
             uploaded_count += 1
         
         except Exception as e:
-            print(f"ERROR:    Failed to process and upload file '{file.filename}'. Reason: {e}")
+            db.rollback()
+            print(f"ERROR: Failed to process and upload file '{file.filename}'. Reason: {e}")
             failed_files.append(file.filename)
         
         finally:
             file.file.close()
 
-    db.commit()
-    
-    message = f"Upload complete. {uploaded_count} image(s) succeeded, {len(failed_files)} failed."
+    message = f"Upload complete. {uploaded_count} file(s) succeeded, {len(failed_files)} failed."
     return JSONResponse(
         {
             "message": message,

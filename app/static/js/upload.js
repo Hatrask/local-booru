@@ -25,7 +25,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearQueueBtn = document.getElementById('clear-queue-btn');
 
     // --- 2. CONFIGURATION & STATE ---
-    const MAX_FILES = 500;
+    const MAX_FILES = 1000;
+    const UPLOAD_CHUNK_SIZE = 50; // Upload 50 files at a time
     const THUMBNAIL_SIZE = 200;
     let queuedFiles = [];
     // State flags prevent concurrent operations (e.g., adding files while an upload is in progress)
@@ -48,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadButton.textContent = 'Processing...';
         } else if (isUploading) {
             uploadButton.disabled = true;
-            uploadButton.textContent = 'Uploading...';
+            // The button text is now handled inside handleFormSubmit to show progress
         } else {
             uploadButton.disabled = !hasFiles;
             uploadButton.textContent = 'Upload';
@@ -255,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
     /**
-     * Handles the form submission by building FormData from the queue and POSTing it.
+     * Handles the form submission by uploading the queue in manageable chunks.
      * @param {SubmitEvent} event The form's submit event.
      */
     async function handleFormSubmit(event) {
@@ -264,34 +265,63 @@ document.addEventListener('DOMContentLoaded', () => {
             if (queuedFiles.length === 0) showToast('Please select some files to upload.', 'info');
             return;
         }
+		
+		uploadStatusDiv.textContent = '';
+
         isUploading = true;
-        uploadStatusDiv.textContent = `Uploading ${queuedFiles.length} file(s)...`;
-        uploadStatusDiv.style.color = 'var(--color-text-primary)';
         updateUIVisuals();
+        
+        const totalFiles = queuedFiles.length;
+        let uploadedCount = 0;
+        let failedCount = 0;
+        const originalButtonText = uploadButton.textContent;
 
-        const formData = new FormData();
-        formData.append('tags', tagInput.value);
-        queuedFiles.forEach(file => formData.append('files', file));
+        // Process the queue in chunks
+        for (let i = 0; i < totalFiles; i += UPLOAD_CHUNK_SIZE) {
+            const chunk = queuedFiles.slice(i, i + UPLOAD_CHUNK_SIZE);
+            const chunkNumber = (i / UPLOAD_CHUNK_SIZE) + 1;
+            const totalChunks = Math.ceil(totalFiles / UPLOAD_CHUNK_SIZE);
 
-        try {
-            const response = await fetch('/upload', { method: 'POST', body: formData });
-            const result = await response.json();
-            if (response.ok) {
-                uploadStatusDiv.textContent = result.message || 'Upload successful.';
-                uploadStatusDiv.style.color = 'var(--color-success)';
-                clearQueue();
-            } else {
-                uploadStatusDiv.textContent = `Upload failed: ${result.detail || result.message || `Server responded with status ${response.status}.`}`;
-                uploadStatusDiv.style.color = 'var(--color-danger)';
+            //uploadStatusDiv.textContent = `Uploading chunk ${chunkNumber} of ${totalChunks}... (${chunk.length} files)`;
+            //uploadStatusDiv.style.color = 'var(--color-text-primary)';
+            uploadButton.textContent = `Uploading... ${Math.round((i / totalFiles) * 100)}%`;
+
+            const formData = new FormData();
+            formData.append('tags', tagInput.value);
+            chunk.forEach(file => formData.append('files', file));
+
+            try {
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (response.ok) {
+                    uploadedCount += result.uploaded_count || 0;
+                    failedCount += result.failed_count || 0;
+                } else {
+                    // If the whole chunk fails, count all its files as failed
+                    failedCount += chunk.length;
+                    console.error(`Chunk upload failed:`, result.detail || result.message);
+                }
+            } catch (error) {
+                // Handle network errors for the chunk
+                failedCount += chunk.length;
+                console.error('Error during chunk upload:', error);
             }
-        } catch (error) {
-            console.error('Error during upload:', error);
-            uploadStatusDiv.textContent = 'An unexpected network error occurred.';
-            uploadStatusDiv.style.color = 'var(--color-danger)';
-        } finally {
-            isUploading = false;
-            updateUIVisuals();
         }
+
+        // Final status update after all chunks are processed
+        let finalMessage = `Upload complete. Succeeded: ${uploadedCount}, Failed: ${failedCount}.`;
+        if (failedCount > 0) {
+            uploadStatusDiv.style.color = 'var(--color-danger)';
+        } else {
+            uploadStatusDiv.style.color = 'var(--color-success)';
+        }
+        uploadStatusDiv.textContent = finalMessage;
+
+        isUploading = false;
+        clearQueue(); // Clear the queue on completion
+        uploadButton.textContent = originalButtonText; // Reset button text
+        updateUIVisuals(); // Final UI reset
     }
 
     // --- 5. INITIALIZATION ---
