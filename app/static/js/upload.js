@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearQueueBtn = document.getElementById('clear-queue-btn');
 
     // --- 2. CONFIGURATION & STATE ---
-    const MAX_FILES = 100000;
+    const MAX_FILES = 5000;
     const UPLOAD_CHUNK_SIZE = 50; // Upload 50 files at a time
     const CHUNK_UPLOAD_TIMEOUT = 60000; // 60 seconds timeout for each chunk
     const PREVIEW_MODE_THRESHOLD = 100; // Switch to list view above this number of files
