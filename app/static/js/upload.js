@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 2. CONFIGURATION & STATE ---
     const MAX_FILES = 1000;
     const UPLOAD_CHUNK_SIZE = 50; // Upload 50 files at a time
+    const CHUNK_UPLOAD_TIMEOUT = 60000; // 60 seconds timeout for each chunk
     const THUMBNAIL_SIZE = 200;
     let queuedFiles = [];
     // State flags prevent concurrent operations (e.g., adding files while an upload is in progress)
@@ -265,12 +266,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (queuedFiles.length === 0) showToast('Please select some files to upload.', 'info');
             return;
         }
-		
-		uploadStatusDiv.textContent = '';
 
         isUploading = true;
         updateUIVisuals();
-        
+        uploadStatusDiv.textContent = ''; // Clear previous status messages
+
         const totalFiles = queuedFiles.length;
         let uploadedCount = 0;
         let failedCount = 0;
@@ -282,46 +282,55 @@ document.addEventListener('DOMContentLoaded', () => {
             const chunkNumber = (i / UPLOAD_CHUNK_SIZE) + 1;
             const totalChunks = Math.ceil(totalFiles / UPLOAD_CHUNK_SIZE);
 
-            //uploadStatusDiv.textContent = `Uploading chunk ${chunkNumber} of ${totalChunks}... (${chunk.length} files)`;
-            //uploadStatusDiv.style.color = 'var(--color-text-primary)';
             uploadButton.textContent = `Uploading... ${Math.round((i / totalFiles) * 100)}%`;
 
             const formData = new FormData();
             formData.append('tags', tagInput.value);
             chunk.forEach(file => formData.append('files', file));
 
-            try {
-                const response = await fetch('/upload', { method: 'POST', body: formData });
-                const result = await response.json();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                controller.abort();
+                console.error(`Chunk ${chunkNumber} timed out.`);
+            }, CHUNK_UPLOAD_TIMEOUT);
 
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData,
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+
+                const result = await response.json();
                 if (response.ok) {
                     uploadedCount += result.uploaded_count || 0;
                     failedCount += result.failed_count || 0;
                 } else {
-                    // If the whole chunk fails, count all its files as failed
                     failedCount += chunk.length;
-                    console.error(`Chunk upload failed:`, result.detail || result.message);
+                    console.error(`Chunk ${chunkNumber} failed:`, result.detail || result.message);
                 }
             } catch (error) {
-                // Handle network errors for the chunk
+                clearTimeout(timeoutId);
                 failedCount += chunk.length;
-                console.error('Error during chunk upload:', error);
+                if (error.name === 'AbortError') {
+                    showToast(`Chunk ${chunkNumber} of ${totalChunks} timed out.`, 'error');
+                } else {
+                    showToast(`An error occurred with chunk ${chunkNumber}.`, 'error');
+                    console.error(`Error during chunk ${chunkNumber} upload:`, error);
+                }
             }
         }
 
-        // Final status update after all chunks are processed
         let finalMessage = `Upload complete. Succeeded: ${uploadedCount}, Failed: ${failedCount}.`;
-        if (failedCount > 0) {
-            uploadStatusDiv.style.color = 'var(--color-danger)';
-        } else {
-            uploadStatusDiv.style.color = 'var(--color-success)';
-        }
+        uploadStatusDiv.style.color = failedCount > 0 ? 'var(--color-danger)' : 'var(--color-success)';
         uploadStatusDiv.textContent = finalMessage;
 
         isUploading = false;
-        clearQueue(); // Clear the queue on completion
-        uploadButton.textContent = originalButtonText; // Reset button text
-        updateUIVisuals(); // Final UI reset
+        clearQueue();
+        uploadButton.textContent = originalButtonText;
+        updateUIVisuals();
     }
 
     // --- 5. INITIALIZATION ---
