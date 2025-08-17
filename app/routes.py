@@ -723,6 +723,10 @@ async def api_import_collection(file: UploadFile = File(...), db: Session = Depe
 
         db.commit()
 
+        # --- Ensure metadata:favorite tag exists -- -
+        get_or_create_tags(db, {"metadata:favorite"})
+        db.commit()
+
     return JSONResponse({
         "message": f"Import complete. Added {imported_count} new images and skipped {skipped_count} duplicates."
     })
