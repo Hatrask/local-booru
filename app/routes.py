@@ -5,6 +5,8 @@ import json
 import tempfile
 import zipfile
 import asyncio
+import io
+import requests
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -34,6 +36,10 @@ class ChangeCategoryRequest(BaseModel):
     new_category: str
 
 class UpdateTagsRequest(BaseModel):
+    tags: List[str] = []
+
+class UploadFromUrlRequest(BaseModel):
+    image_url: str
     tags: List[str] = []
 
 # --- Frontend Page Routes ---
@@ -152,6 +158,83 @@ async def upload_images(
         },
         status_code=200
     )
+
+@app.post("/api/upload_from_url")
+async def api_upload_from_url(request: UploadFromUrlRequest, db: Session = Depends(get_db)):
+    """
+    Downloads an image from a URL, processes it, and adds it to the gallery.
+    This is designed to be used by the browser extension.
+    """
+
+    # This function contains the core logic and will be run in a thread to avoid blocking the server
+    def _download_and_process():
+        try:
+            # 1. Download the image from the provided URL
+            response = requests.get(request.image_url, stream=True, timeout=30)
+            response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+
+            content_type = response.headers.get('content-type')
+            if not content_type or not content_type.startswith("image/"):
+                raise HTTPException(status_code=400, detail=f"URL did not point to a valid image. Content-Type: {content_type}")
+
+            image_bytes = response.content
+            # Use an in-memory stream for processing
+            image_stream = io.BytesIO(image_bytes)
+            
+            # 2. Calculate the image hash and check if it already exists
+            file_hash = calculate_sha256(image_stream)
+            image_stream.seek(0)  # Reset stream position for the next read
+
+            if db.query(Image).filter(Image.sha256_hash == file_hash).first():
+                return {"message": "Image already exists in the gallery.", "status": "duplicate"}
+
+            # 3. Determine filename and save the image and its thumbnail
+            subtype = content_type.split('/')[-1]
+            path_ext = os.path.splitext(request.image_url)[1].lstrip('.')
+            extension = path_ext or subtype or "jpg"
+            
+            unique_filename = f"{uuid.uuid4().hex}.{extension}"
+            nested_path = get_nested_path_for_filename(unique_filename)
+            
+            image_dest_dir = os.path.join(MEDIA_DIR, "images", nested_path)
+            thumbnail_dest_dir = os.path.join(THUMBNAIL_DIR, nested_path)
+            os.makedirs(image_dest_dir, exist_ok=True)
+            os.makedirs(thumbnail_dest_dir, exist_ok=True)
+
+            path = os.path.join(image_dest_dir, unique_filename)
+            
+            with open(path, "wb") as buffer:
+                buffer.write(image_bytes)
+
+            thumbnail_filename = f"{os.path.splitext(unique_filename)[0]}.jpg"
+            thumbnail_path = os.path.join(thumbnail_dest_dir, thumbnail_filename)
+            create_thumbnail(path, thumbnail_path)
+
+            # 4. Parse and retrieve/create the tags
+            tag_names = {t.strip().lower() for t in request.tags if t.strip()}
+            tags_to_add = get_or_create_tags(db, tag_names)
+            
+            # 5. Create the new image record in the database
+            new_image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
+            db.add(new_image)
+            db.commit()
+            
+            return {"message": f"Image from URL uploaded successfully.", "status": "success"}
+
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(status_code=502, detail=f"Failed to download image from URL. Reason: {e}")
+        except Exception as e:
+            db.rollback()
+            # This handles other potential errors like filesystem permissions
+            raise HTTPException(status_code=500, detail=f"An internal error occurred: {e}")
+
+    # Use FastAPI's run_in_threadpool to handle the blocking I/O (download, file saving)
+    result = await run_in_threadpool(_download_and_process)
+
+    if result["status"] == "duplicate":
+        return JSONResponse({"message": result["message"]}, status_code=200)
+    
+    return JSONResponse({"message": result["message"]}, status_code=201)
 
 # This new endpoint replaces the old form-based /retag/{image_id} route.
 # It accepts a JSON body, making it suitable for modern frontend interactions.
