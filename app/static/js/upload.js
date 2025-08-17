@@ -25,11 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearQueueBtn = document.getElementById('clear-queue-btn');
 
     // --- 2. CONFIGURATION & STATE ---
-    const MAX_FILES = 1000;
+    const MAX_FILES = 100000;
     const UPLOAD_CHUNK_SIZE = 50; // Upload 50 files at a time
     const CHUNK_UPLOAD_TIMEOUT = 60000; // 60 seconds timeout for each chunk
+    const PREVIEW_MODE_THRESHOLD = 100; // Switch to list view above this number of files
     const THUMBNAIL_SIZE = 200;
     let queuedFiles = [];
+    let currentPreviewMode = 'thumbnails'; // Can be 'thumbnails' or 'list'
+
     // State flags prevent concurrent operations (e.g., adding files while an upload is in progress)
     let isProcessingFiles = false;
     let isUploading = false;
@@ -58,24 +61,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Generates and appends a preview thumbnail for a given file.
+     * Switches the preview area to a simple list of filenames.
+     */
+    function switchToListView() {
+        currentPreviewMode = 'list';
+        previewContainer.innerHTML = ''; // Clear existing thumbnails
+        previewContainer.classList.add('list-view'); // Add a class for styling
+
+        queuedFiles.forEach(file => {
+            const listItem = document.createElement('div');
+            listItem.className = 'preview-list-item';
+            listItem.textContent = file.name;
+            previewContainer.appendChild(listItem);
+        });
+    }
+
+    /**
+     * Appends a new file to the preview area, either as a thumbnail or a list item.
      * @param {File} file The file to create a preview for.
      */
     async function createAndAppendPreview(file) {
+        if (currentPreviewMode === 'thumbnails') {
+            await createAndAppendThumbnail(file);
+        } else {
+            createAndAppendListItem(file);
+        }
+    }
+
+    /**
+     * Creates and appends a thumbnail preview for a given file.
+     * @param {File} file The file to create a thumbnail for.
+     */
+    async function createAndAppendThumbnail(file) {
         const wrapper = document.createElement('div');
         wrapper.className = 'preview-thumb-wrapper';
 
         const thumbImg = document.createElement('img');
         thumbImg.className = 'preview-thumb';
 
-        // Generate the actual thumbnail using a canvas.
         try {
             const thumbnailUrl = await generateThumbnail(file);
             thumbImg.src = thumbnailUrl;
         } catch (error) {
             console.error("Could not generate thumbnail for", file.name, error);
-            // Fallback: use a generic icon or leave src empty
-            thumbImg.src = ''; // Or a path to a generic file icon
+            thumbImg.src = '';
             thumbImg.alt = 'Preview not available';
         }
 
@@ -85,14 +114,35 @@ document.addEventListener('DOMContentLoaded', () => {
         removeBtn.innerHTML = '&times;';
         removeBtn.title = 'Remove ' + file.name;
         removeBtn.onclick = () => {
-            wrapper.remove();
+            // This is complex because removing a file might drop us below the threshold.
+            // The simplest solution for now is to rebuild the entire preview.
+			// I don't think there are any situations where this will return true, but I'll leave it here for now
             queuedFiles = queuedFiles.filter(f => f !== file);
+            if (queuedFiles.length < PREVIEW_MODE_THRESHOLD && currentPreviewMode === 'list') {
+                currentPreviewMode = 'thumbnails'; // Switch back
+                previewContainer.innerHTML = '';
+                previewContainer.classList.remove('list-view');
+                queuedFiles.forEach(f => createAndAppendPreview(f)); // Re-render all
+            } else {
+                wrapper.remove(); // Just remove the element if we're staying in thumbnail mode
+            }
             updateUIVisuals();
         };
 
         wrapper.appendChild(thumbImg);
         wrapper.appendChild(removeBtn);
         previewContainer.appendChild(wrapper);
+    }
+
+    /**
+     * Creates and appends a simple list item for a given file.
+     * @param {File} file The file to create a list item for.
+     */
+    function createAndAppendListItem(file) {
+        const listItem = document.createElement('div');
+        listItem.className = 'preview-list-item';
+        listItem.textContent = file.name;
+        previewContainer.appendChild(listItem);
     }
     
     /**
@@ -153,9 +203,13 @@ document.addEventListener('DOMContentLoaded', () => {
         queuedFiles = [];
         previewContainer.innerHTML = '';
         uploadForm.reset();
-        // Explicitly clear file input values to allow re-selecting the same items.
         fileInput.value = '';
         folderInput.value = '';
+        
+        // Reset preview mode
+        currentPreviewMode = 'thumbnails';
+        previewContainer.classList.remove('list-view');
+
         updateUIVisuals();
     }
 
@@ -173,18 +227,20 @@ document.addEventListener('DOMContentLoaded', () => {
 		let fileLimitBreached = false;
 
 		try {
+            const potentialTotal = queuedFiles.length + items.length; // Approximate, but good enough
+            if (potentialTotal >= PREVIEW_MODE_THRESHOLD && currentPreviewMode === 'thumbnails') {
+                switchToListView();
+            }
+
 			// Adds a single valid image file to the queue if the limit has not been reached.
-			const addFileToQueue = async (file) => { // Now async
+			const addFileToQueue = async (file) => {
 				if (queuedFiles.length >= MAX_FILES) {
 					fileLimitBreached = true;
 					return false; // Signal to stop processing
 				}
 				if (file.type.startsWith('image/') && !queuedFiles.some(f => f.name === file.name && f.size === file.size)) {
 					queuedFiles.push(file);
-					// Await the thumbnail creation before moving to the next file.
-					// This prevents the browser from being overwhelmed by creating many
-					// thumbnails at the exact same time.
-					await createAndAppendPreview(file);
+                    await createAndAppendPreview(file);
 				}
 				return true; // Signal to continue
 			};
@@ -201,6 +257,9 @@ document.addEventListener('DOMContentLoaded', () => {
 							fileLimitBreached = true;
 							break;
 						}
+                        if (queuedFiles.length >= PREVIEW_MODE_THRESHOLD && currentPreviewMode === 'thumbnails') {
+                            switchToListView();
+                        }
 						if (innerEntry.isDirectory) {
 							await traverseDirectory(innerEntry);
 						} else if (innerEntry.isFile) {
