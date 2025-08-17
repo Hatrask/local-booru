@@ -220,8 +220,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
 		// Listeners for the selection control buttons
 		document.getElementById('selectAllBtn').addEventListener('click', () => {
-			currentImagesOnPage.forEach(img => selectedImageIds.add(img.id));
-			galleryGrid.querySelectorAll('.thumb').forEach(thumb => thumb.classList.add('selected'));
+			const spaceAvailable = 500 - selectedImageIds.size;
+			if (currentImagesOnPage.length > 0 && spaceAvailable <= 0) {
+				showToast('You have already selected 500 images.', 'info');
+				return;
+			}
+
+			let selectedCountOnPage = 0;
+			currentImagesOnPage.forEach(img => {
+				if (selectedImageIds.size < 500) {
+					selectedImageIds.add(img.id);
+					selectedCountOnPage++;
+				}
+			});
+
+			if (selectedCountOnPage < currentImagesOnPage.length) {
+				showToast(`Selection limit of 500 reached. ${selectedCountOnPage} images from this page were added.`, 'info');
+			}
+
+			galleryGrid.querySelectorAll('.thumb').forEach(thumb => {
+				const thumbId = parseInt(thumb.dataset.imageId, 10);
+				if (selectedImageIds.has(thumbId)) {
+					thumb.classList.add('selected');
+				}
+			});
 			updateSelection();
 		});
 
