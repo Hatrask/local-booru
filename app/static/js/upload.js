@@ -114,18 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
         removeBtn.innerHTML = '&times;';
         removeBtn.title = 'Remove ' + file.name;
         removeBtn.onclick = () => {
-            // This is complex because removing a file might drop us below the threshold.
-            // The simplest solution for now is to rebuild the entire preview.
-			// I don't think there are any situations where this will return true, but I'll leave it here for now
+            wrapper.remove();
             queuedFiles = queuedFiles.filter(f => f !== file);
-            if (queuedFiles.length < PREVIEW_MODE_THRESHOLD && currentPreviewMode === 'list') {
-                currentPreviewMode = 'thumbnails'; // Switch back
-                previewContainer.innerHTML = '';
-                previewContainer.classList.remove('list-view');
-                queuedFiles.forEach(f => createAndAppendPreview(f)); // Re-render all
-            } else {
-                wrapper.remove(); // Just remove the element if we're staying in thumbnail mode
-            }
             updateUIVisuals();
         };
 

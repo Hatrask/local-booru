@@ -4,10 +4,12 @@ import uuid
 import json
 import tempfile
 import zipfile
+import asyncio
 from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import UploadFile, File, Form, Request, Depends, Query, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session, joinedload, selectinload
@@ -71,76 +73,82 @@ def settings_page(request: Request):
 
 # --- API Endpoints ---
 
+def _process_and_save_file(file: UploadFile, tag_names: set, get_db_func) -> bool:
+    """
+    This function runs in a separate thread and handles the entire lifecycle
+    of processing and saving a single file. It uses its own database session.
+    """
+    db = next(get_db_func())
+    try:
+        if not file.content_type or not file.content_type.startswith("image/"):
+            return False
+
+        file.file.seek(0)
+        file_hash = calculate_sha256(file.file)
+
+        if db.query(Image).filter(Image.sha256_hash == file_hash).first():
+            return True # Treat as success if already exists
+
+        subtype = file.content_type.split('/')[-1]
+        extension = os.path.splitext(file.filename)[1].lstrip('.') or subtype or "jpg"
+        
+        unique_filename = f"{uuid.uuid4().hex}.{extension}"
+        nested_path = get_nested_path_for_filename(unique_filename)
+        
+        image_dest_dir = os.path.join(MEDIA_DIR, "images", nested_path)
+        thumbnail_dest_dir = os.path.join(THUMBNAIL_DIR, nested_path)
+        os.makedirs(image_dest_dir, exist_ok=True)
+        os.makedirs(thumbnail_dest_dir, exist_ok=True)
+
+        path = os.path.join(image_dest_dir, unique_filename)
+        
+        file.file.seek(0)
+        with open(path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        thumbnail_filename = f"{os.path.splitext(unique_filename)[0]}.jpg"
+        thumbnail_path = os.path.join(thumbnail_dest_dir, thumbnail_filename)
+        create_thumbnail(path, thumbnail_path)
+
+        tags_to_add = get_or_create_tags(db, tag_names)
+        
+        image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
+        db.add(image)
+        db.commit()
+        
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"ERROR: Thread failed to process file '{file.filename}'. Reason: {e}")
+        return False
+    finally:
+        file.file.close()
+        db.close()
+
 @app.post("/upload")
-def upload_images(
+async def upload_images(
     files: List[UploadFile] = File(...),
     tags: str = Form(""),
-    db: Session = Depends(get_db),
+    get_db_func: Session = Depends(get_db),
 ):
     tag_names = {t.strip().lower() for t in tags.split(',') if t.strip()}
     
-    uploaded_count = 0
-    failed_files = []
-
-    for file in files:
-        try:
-            if not file.content_type.startswith("image/"):
-                continue
-
-            file.file.seek(0)
-            file_hash = calculate_sha256(file.file)
-
-            if db.query(Image).filter(Image.sha256_hash == file_hash).first():
-                continue
-
-            try:
-                subtype = file.content_type.split('/')[-1]
-                extension = os.path.splitext(file.filename)[1].lstrip('.') or subtype or "jpg"
-            except (IndexError, AttributeError):
-                extension = "jpg"
-
-            unique_filename = f"{uuid.uuid4().hex}.{extension}"
-            nested_path = get_nested_path_for_filename(unique_filename)
-            
-            image_dest_dir = os.path.join(MEDIA_DIR, "images", nested_path)
-            thumbnail_dest_dir = os.path.join(THUMBNAIL_DIR, nested_path)
-            os.makedirs(image_dest_dir, exist_ok=True)
-            os.makedirs(thumbnail_dest_dir, exist_ok=True)
-
-            path = os.path.join(image_dest_dir, unique_filename)
-            
-            file.file.seek(0)
-            with open(path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-
-            thumbnail_filename = f"{os.path.splitext(unique_filename)[0]}.jpg"
-            thumbnail_path = os.path.join(thumbnail_dest_dir, thumbnail_filename)
-            create_thumbnail(path, thumbnail_path)
-
-            tags_to_add = get_or_create_tags(db, tag_names)
-            
-            image = Image(filename=unique_filename, sha256_hash=file_hash, tags=tags_to_add)
-            db.add(image)
-            
-            db.commit()
-            
-            uploaded_count += 1
-        
-        except Exception as e:
-            db.rollback()
-            print(f"ERROR: Failed to process and upload file '{file.filename}'. Reason: {e}")
-            failed_files.append(file.filename)
-        
-        finally:
-            file.file.close()
-
-    message = f"Upload complete. {uploaded_count} file(s) succeeded, {len(failed_files)} failed."
+    tasks = [
+        run_in_threadpool(_process_and_save_file, file, tag_names, get_db)
+        for file in files
+    ]
+    results = await asyncio.gather(*tasks)
+    
+    uploaded_count = sum(1 for r in results if r)
+    failed_count = len(results) - uploaded_count
+    
+    message = f"Upload complete. {uploaded_count} file(s) succeeded, {failed_count} failed."
     return JSONResponse(
         {
             "message": message,
             "uploaded_count": uploaded_count,
-            "failed_count": len(failed_files),
-            "failed_files": failed_files
+            "failed_count": failed_count,
+            "failed_files": []
         },
         status_code=200
     )
