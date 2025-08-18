@@ -438,9 +438,10 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
     z-index: 50;
     width: max-content;
-    max-width: 300px;
+    max-width: 400px;
+	max-height: 100px;
+	overflow-y: auto; /* Makes it scrollable */
     text-align: left;
-    
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
@@ -525,14 +526,12 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 
 #lightbox-sidebar {
     width: 350px;
+	max-height: 95%;
     flex-shrink: 0;
-    background-color: var(--color-bg-secondary);
-    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
     transition: width 0.3s ease-in-out;
-    margin-right: 1rem;
+	margin-right: 1rem;
 }
 
 /* --- Lightbox Mode Visibility --- */
@@ -566,7 +565,9 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     position: absolute;
     bottom: 1rem;
     right: 1rem;
-    width: 350px;
+	max-width: 600px;
+	max-height: 240px;
+	overflow-y: auto;
     display: flex;
     flex-direction: column;
     background: var(--lightbox-view-mode-bg);
@@ -622,6 +623,8 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
     display: flex;
     flex-direction: column;
     min-height: 0;
+	max-height: 400px;
+	overflow-y: auto;
     background-color: var(--color-bg-secondary);
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
@@ -780,6 +783,8 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .batch-gallery .thumb img { pointer-events: none; }
 .batch-gallery .tag-pills-container {
     justify-content: center;
+	max-height: 60px;
+	overflow-y: auto;
 }
 #selection-controls button {
     padding: 0.5rem 1rem; margin: 0 0.2rem; cursor: pointer;
@@ -1168,7 +1173,13 @@ input:checked + .toggle-slider:before {
         display: none;
     }
 
+	#lightbox-close {
+		top: 0px;
+		right: 10px;
+	}
+
     #lightbox-content {
+		max-height: 90vh;
         flex-direction: column;
         border-radius: 0;
         padding: 0.5rem;
@@ -1184,7 +1195,7 @@ input:checked + .toggle-slider:before {
     }
 
     #lightbox-image {
-        max-height: 100%;
+        max-height: 95vh;
     }
 
     /* The desktop overlay is repurposed as a static action bar at the bottom */
@@ -1212,6 +1223,10 @@ input:checked + .toggle-slider:before {
         display: none;
     }
 
+	#lightbox-view-mode-content .tag-pills-container {
+		display: none;
+	}
+
     /* Center the buttons in the action bar */
     #lightbox-view-mode-content .lightbox-actions {
         margin-top: 0;
@@ -1224,4 +1239,18 @@ input:checked + .toggle-slider:before {
         flex-grow: 1;
         max-width: 33%;
     }
+	
+	.edit-mode #lightbox-sidebar {
+		margin: 0;
+		padding: 0 0.5rem;
+		max-height: 90vh;
+	}
+	
+	.edit-mode #lightbox-image {
+		display: none;
+	}
+	
+	.edit-mode .tag-panel-content {
+		max-height: 175px;
+	}
 }
