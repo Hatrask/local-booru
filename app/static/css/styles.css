@@ -194,6 +194,7 @@ a.tag-pill:hover { filter: brightness(1.2); }
     border-radius: var(--border-radius); color: white; font-weight: 500;
 }
 
+.hidden { display: none; }
 
 /* --- 2.2 Generic Action Button --- */
 .action-button {
@@ -546,9 +547,6 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 .edit-mode #lightbox-sidebar {
     display: flex;
 }
-.edit-mode #lightbox-image-container {
-    width: calc(100% - 351px); /* 350px for sidebar + 1px for its border */
-}
 /* In edit mode, disable the navigation buttons and hide the view-mode info overlay. */
 .edit-mode .lightbox-nav button {
     pointer-events: none;
@@ -807,51 +805,168 @@ form.search-form button:hover { background-color: var(--color-accent-hover); }
 
 
 /* --- 3.6 Tag Manager Page --- */
-.tag-manager-container { max-width: 900px; margin: auto; text-align: left; }
-.tag-manager-container a.back.action-button { margin-bottom: 2rem; display: inline-block; }
-.tag-manager-controls {
-    display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
-    align-items: center; padding: 1rem; margin-bottom: 1.5rem;
-    background-color: var(--color-bg-secondary); border: 1px solid var(--color-border);
+.tag-manager-container {
+    max-width: 900px;
+    margin: auto;
+    text-align: left;
+}
+.action-panel, .orphan-management-panel, .tag-explorer {
+    background-color: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin-bottom: 2rem;
+}
+.action-panel h2, .orphan-management-panel h2, .tag-explorer h2 {
+    margin: 0;
+    padding: 1rem 1.5rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.action-selector, .action-form, .orphan-management-panel p, .explorer-controls {
+    padding: 1.5rem;
+}
+.orphan-management-panel p {
+    padding-top: 0;
+    margin-top: 0;
+}
+#action-select {
+    width: 100%;
+    padding: 0.6rem;
+    font-size: 1.1rem;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+.action-form .form-row {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.action-form .form-group {
+    flex: 1;
+}
+.action-form .autocomplete-container {
+    margin: 0; /* Override default margin */
+}
+.action-form label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+}
+.action-form input[type="text"], .action-form select {
+    width: 100%;
+    padding: 0.6rem;
+    font-size: 1rem;
+    box-sizing: border-box;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
 }
-.tag-manager-controls .autocomplete-container { flex-grow: 1; min-width: 250px; }
-.tag-manager-controls .sort-buttons, .tag-manager-controls .filter-options { display: flex; align-items: center; gap: 0.5rem; color: var(--color-text-secondary); }
-.tag-manager-controls .action-button.active { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
-.tag-manager-container input[type="text"] {
-    padding: 0.4rem; font-size: 1rem; box-sizing: border-box; width: 100%;
-    outline: none; background-color: var(--color-bg-tertiary);
-    color: var(--color-text-primary); border: 1px solid var(--color-border);
+.action-button.primary-action {
+    background-color: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+    font-weight: bold;
+    padding: 0.6rem 1.2rem;
+}
+.action-button.danger-action {
+    background-color: var(--color-danger);
+    color: white;
+    border-color: var(--color-danger);
+    font-weight: bold;
+    padding: 0.6rem 1.2rem;
+}
+.action-button:hover {
+    filter: brightness(1.2);
+}
+.warning-text {
+    color: var(--color-warning);
+    font-size: 0.9em;
+    padding: 0.5rem;
+    border-left: 3px solid var(--color-warning);
+    background-color: rgba(255, 152, 0, 0.1);
+    margin: 0;
+}
+.form-group .warning-text {
+	margin-top: 1.3rem;
+}
+.orphan-management-panel {
+    border-color: var(--color-border);
+}
+.orphan-management-panel h2 {
+	margin-bottom: 1rem;
+}
+.orphan-management-panel .danger-action {
+    margin-left: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.explorer-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+.explorer-controls input[type="text"] {
+    flex-grow: 1;
+    padding: 0.6rem;
+    font-size: 1rem;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
     border-radius: var(--border-radius);
+}
+.explorer-controls select {
+    padding: 0.6rem;
+    font-size: 1rem;
+    background-color: var(--color-bg-tertiary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+}
+.explorer-controls .filter-options { display: flex; align-items: center; gap: 0.5rem; }
+#explorer-tag-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 1.5rem 1.5rem;
 }
 .tag-list { list-style-type: none; padding: 0; min-height: 50px; }
-.tag-item { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; border-radius: var(--border-radius); }
+.tag-item { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); margin-bottom: 0.5rem; border-radius: var(--border-radius); word-break: break-all; }
 .tag-display { display: flex; justify-content: space-between; align-items: center; padding: 1rem; }
 .tag-name-link { font-weight: bold; color: var(--color-text-primary); }
 .tag-name-link:hover { text-decoration: underline; }
 .tag-count { font-size: 0.9em; color: var(--color-text-secondary); margin-left: 0.5rem; }
-.tag-controls { display: flex; gap: 0.5rem; }
-.tag-controls .action-button, .tag-manager-container .edit-form .action-button { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
-.edit-btn, .rename-btn { background-color: var(--color-accent); color: white; border-color: var(--color-accent); }
-.merge-btn { background-color: var(--color-success); color: white; border-color: var(--color-success); }
-.force-delete-btn { background-color: var(--color-danger); color: white; border-color: var(--color-danger); }
-.cancel-btn { background-color: var(--color-neutral); color: white; border-color: var(--color-neutral); }
-.tag-manager-container .edit-form {
-    display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;
-    padding: 1rem; background-color: var(--color-bg-tertiary);
-    border-top: 1px solid var(--color-border); border-radius: 0 0 var(--border-radius) var(--border-radius);
+.tag-controls { word-break: normal; }
+.tag-item .tag-display .tag-controls { display: flex; gap: 0.5rem; }
+.quick-action-btn { font-size: 0.8em; padding: 0.3rem 0.6rem; }
+#explorer-pagination {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--color-border);
+    text-align: center;
+		   
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
-.tag-manager-container .edit-form.hidden { display: none; }
-.tag-manager-container .edit-form input[type="text"] { padding: 0.5rem; font-size: 0.9rem; background-color: var(--color-bg-secondary); }
-.tag-manager-container .edit-form .cancel-btn { margin-left: auto; }
-.edit-action-group { display: flex; align-items: center; gap: 0.5rem; flex-grow: 1; }
-.edit-action-group input[type="text"] { flex-grow: 1; }
-.edit-action-group select {
-    padding: 0.5rem; font-size: 0.9rem; background-color: var(--color-bg-secondary);
-    color: var(--color-text-primary); border: 1px solid var(--color-border);
+.pagination-btn {
+    background: none;
+				 
+					  
+				
+		 
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    padding: 0.4rem 0.8rem;
     border-radius: var(--border-radius);
+    cursor: pointer;
+}
+.pagination-btn:hover {
+    background-color: var(--color-bg-tertiary);
 }
 #loading-message { text-align: center; color: var(--color-text-secondary); padding: 2rem; }
+.action-form.hidden { display: none; }
 
 
 /* --- 3.7 Saved Searches Page --- */
@@ -1253,4 +1368,44 @@ input:checked + .toggle-slider:before {
 	.edit-mode .tag-panel-content {
 		max-height: 175px;
 	}
+
+    /* --- 4.7 Tag Manager Mobile Tweaks --- */
+    .action-form .form-row {
+        flex-direction: column;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .explorer-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tag-item .tag-display {
+        flex-wrap: wrap; /* Allow wrapping if content is too wide */
+    }
+	
+	.tag-item .tag-display .tag-controls {
+        display: none; /* Hide controls by default */
+	}
+	
+    .tag-controls {
+        flex-direction: column;
+        width: 100%;
+        padding: 1rem 1rem 0.5rem; /* Add some space above */
+        margin-top: 1rem;
+        border-top: 1px solid var(--color-border);
+        gap: 0.5rem;
+    }
+    .tag-item .tag-controls .quick-action-btn {
+        width: 100%;
+        text-align: center;
+        padding: 0.6rem; /* Make buttons taller for easier tapping */
+        font-size: 0.9em;
+    }
+    .tag-item.active .tag-controls {
+        display: flex; /* Show controls when the item is active */
+    }
+    .tag-item {
+        cursor: pointer; /* Indicate the whole item is clickable */
+    }
 }

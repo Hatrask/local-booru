@@ -7,27 +7,117 @@
     {% include '_header.html' %}
 
     <div class="tag-manager-container">
-        <h2>Search</h2>
+        <!-- Action Panel: Where the user chooses what to do -->
+        <div class="action-panel">
+            <h2>Tag Actions</h2>
+            <div class="action-selector">
+                <select id="action-select">
+                    <option value="rename">Rename Tag</option>
+                    <option value="change-category">Change Category</option>
+                    <option value="merge">Merge Tags</option>
+                    <option value="delete">Force Delete Tag</option>
+                </select>
+            </div>
+            
+            <!-- Forms for each action. Only one will be visible at a time. -->
+            <div id="action-forms">
+                <!-- Rename Form -->
+                <div id="form-rename" class="action-form">
+                    <div class="form-row">
+                        <div class="form-group autocomplete-container">
+                            <label for="rename-tag-input">Tag to Rename</label>
+                            <input type="text" id="rename-tag-input" placeholder="Type to search for a tag..." autocomplete="off">
+                            <div id="suggestions-rename" class="suggestions"></div>
+                            <input type="hidden" id="rename-tag-id">
+                        </div>
+                        <div class="form-group">
+                            <label for="rename-new-name-input">New Name</label>
+                            <input type="text" id="rename-new-name-input" placeholder="Enter new tag name...">
+                        </div>
+                    </div>
+                    <button id="rename-submit-btn" class="action-button primary-action">Rename</button>
+                </div>
 
-        <div class="tag-manager-controls">
-            <div class="autocomplete-container">
-                <input type="text" id="filter-input" placeholder="Filter tags by name..." autocomplete="off">
-            </div>
-            <div class="sort-buttons">
-                <span>Sort by:</span>
-                <button id="sort-by-name" class="action-button active">Name</button>
-                <button id="sort-by-count" class="action-button">Count</button>
-            </div>
-            <div class="filter-options">
-                <label>
-                    <input type="checkbox" id="show-orphans-only"> Show only orphans (0 images)
-                </label>
+                <!-- Change Category Form -->
+                <div id="form-change-category" class="action-form hidden">
+                    <div class="form-row">
+                        <div class="form-group autocomplete-container">
+                            <label for="category-tag-input">Tag to Change</label>
+                            <input type="text" id="category-tag-input" placeholder="Type to search for a tag..." autocomplete="off">
+                            <div id="suggestions-category" class="suggestions"></div>
+                            <input type="hidden" id="category-tag-id">
+                        </div>
+                        <div class="form-group">
+                            <label for="category-new-category-select">New Category</label>
+                            <select id="category-new-category-select"></select> <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <button id="category-submit-btn" class="action-button primary-action">Change Category</button>
+                </div>
+
+                <!-- Merge Form -->
+                <div id="form-merge" class="action-form hidden">
+                    <div class="form-row">
+                        <div class="form-group autocomplete-container">
+                            <label for="merge-delete-tag-input">Tag to Merge (and Delete)</label>
+                            <input type="text" id="merge-delete-tag-input" placeholder="Type to search..." autocomplete="off">
+                            <div id="suggestions-merge-delete" class="suggestions"></div>
+                            <input type="hidden" id="merge-delete-tag-id">
+                        </div>
+                        <div class="form-group autocomplete-container">
+                            <label for="merge-keep-tag-input">Merge Into (and Keep)</label>
+                            <input type="text" id="merge-keep-tag-input" placeholder="Type to search..." autocomplete="off">
+                            <div id="suggestions-merge-keep" class="suggestions"></div>
+                            <input type="hidden" id="merge-keep-tag-id">
+                        </div>
+                    </div>
+                    <button id="merge-submit-btn" class="action-button primary-action">Merge Tags</button>
+                </div>
+
+                <!-- Delete Form -->
+                <div id="form-delete" class="action-form hidden">
+                    <div class="form-row">
+                        <div class="form-group autocomplete-container">
+                            <label for="delete-tag-input">Tag to Delete</label>
+                            <input type="text" id="delete-tag-input" placeholder="Type to search for a tag..." autocomplete="off">
+                            <div id="suggestions-delete" class="suggestions"></div>
+                            <input type="hidden" id="delete-tag-id">
+                        </div>
+                        <div class="form-group">
+                             <p class="warning-text">This will permanently delete the tag and remove it from all images. This action cannot be undone.</p>
+                        </div>
+                    </div>
+                    <button id="delete-submit-btn" class="action-button danger-action">Force Delete</button>
+                </div>
             </div>
         </div>
 
-        <h2>All Tags (<span id="visible-tag-count">0</span>)</h2>
-        <div id="loading-message">Loading tags...</div>
-        <ul id="tagList" class="tag-list"></ul>
+        <!-- Orphan Tag Management -->
+        <div class="orphan-management-panel">
+            <h2>Orphan Tags</h2>
+            <p>Orphan tags are not used on any images. You can find them using the explorer below or delete them all at once.</p>
+            <button id="delete-all-orphans-btn" class="action-button danger-action">Delete All Orphan Tags</button>
+        </div>
+
+        <!-- Tag Explorer: A search tool to find tags -->
+        <div class="tag-explorer">
+            <h2>Tag Explorer (<span id="explorer-tag-count">0</span>)</h2>
+            <div class="explorer-controls">
+                <input type="text" id="explorer-search-input" placeholder="Search for tags by name...">
+                <div class="filter-options">
+                    <label>
+                        <input type="checkbox" id="explorer-show-orphans-only"> Show only orphans
+                    </label>
+                </div>
+                <select id="explorer-sort-select">
+                    <option value="name">Sort by Name</option>
+                    <option value="count">Sort by Count</option>
+                </select>
+            </div>
+            <div id="loading-message" class="hidden">Loading...</div>
+            <ul id="explorer-tag-list" class="tag-list"></ul>
+            <div id="explorer-pagination" class="pagination"></div>
+        </div>
     </div>
 
 	<script src="/static/js/ui_helpers.js"></script>

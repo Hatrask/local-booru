@@ -1,138 +1,139 @@
 /**
  * tag_manager.js
  *
- * This file contains the client-side logic for the tag management page (`tag_manager.html`).
- * It handles fetching all tags, filtering and sorting them, and provides the UI
- * interactions for tag operations like renaming, changing categories, merging, and deleting.
+ * This file contains the client-side logic for the refactored, search-first
+ * tag management page (`tag_manager.html`). It handles the Action Panel for
+ * performing tag operations and a paginated "Tag Explorer" to find tags.
  */
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- 1. DOM ELEMENT REFERENCES ---
-    const tagListElem = document.getElementById('tagList');
-    const loadingMessage = document.getElementById('loading-message');
-    const filterInput = document.getElementById('filter-input');
-    const sortByNameBtn = document.getElementById('sort-by-name');
-    const sortByCountBtn = document.getElementById('sort-by-count');
-    const showOrphansOnlyCheckbox = document.getElementById('show-orphans-only');
-    const visibleTagCountSpan = document.getElementById('visible-tag-count');
+    const actionSelect = document.getElementById('action-select');
+    const actionForms = document.getElementById('action-forms');
+
+    // Action Panel Forms & Inputs
+    const forms = {
+        rename: document.getElementById('form-rename'),
+        changeCategory: document.getElementById('form-change-category'),
+        merge: document.getElementById('form-merge'),
+        delete: document.getElementById('form-delete')
+    };
+
+    const inputs = {
+        renameTag: document.getElementById('rename-tag-input'),
+        renameTagId: document.getElementById('rename-tag-id'),
+        renameNewName: document.getElementById('rename-new-name-input'),
+        categoryTag: document.getElementById('category-tag-input'),
+        categoryTagId: document.getElementById('category-tag-id'),
+        categoryNewCategory: document.getElementById('category-new-category-select'),
+        mergeDeleteTag: document.getElementById('merge-delete-tag-input'),
+        mergeDeleteTagId: document.getElementById('merge-delete-tag-id'),
+        mergeKeepTag: document.getElementById('merge-keep-tag-input'),
+        mergeKeepTagId: document.getElementById('merge-keep-tag-id'),
+        deleteTag: document.getElementById('delete-tag-input'),
+        deleteTagId: document.getElementById('delete-tag-id'),
+    };
+
+    // Action Panel Buttons
+    const buttons = {
+        rename: document.getElementById('rename-submit-btn'),
+        changeCategory: document.getElementById('category-submit-btn'),
+        merge: document.getElementById('merge-submit-btn'),
+        delete: document.getElementById('delete-submit-btn'),
+        deleteAllOrphans: document.getElementById('delete-all-orphans-btn'),
+    };
+
+    // Tag Explorer Elements
+    const explorer = {
+        searchInput: document.getElementById('explorer-search-input'),
+        showOrphansOnly: document.getElementById('explorer-show-orphans-only'),
+        sortSelect: document.getElementById('explorer-sort-select'),
+        loadingMessage: document.getElementById('loading-message'),
+        tagList: document.getElementById('explorer-tag-list'),
+        pagination: document.getElementById('explorer-pagination'),
+    };
+    const explorerTagCountSpan = document.getElementById('explorer-tag-count');
 
     // --- 2. STATE MANAGEMENT ---
-    let allTags = [];
-    let untaggedCount = 0;
-    let currentSort = 'name'; // 'name' or 'count'
-
-    // --- 3. CORE FUNCTIONS (Filtering, Sorting, Rendering) ---
+    let explorerState = {
+        currentPage: 1,
+        query: '',
+        showOrphans: false,
+        sortBy: 'name'
+    };
+    
+    // --- 3. CORE FUNCTIONS ---
 
     /**
-     * Fetches the complete tag summary from the API, populates state,
-     * and triggers the initial render.
+     * Switches the visible form in the Action Panel based on the dropdown selection.
      */
-    async function fetchAndInitialize() {
-        loadingMessage.style.display = 'block';
-        tagListElem.innerHTML = '';
+    function switchActionForm() {
+        const selectedAction = actionSelect.value;
+        // Hide all forms first
+        for (const key in forms) {
+            forms[key].classList.add('hidden');
+        }
+        // Show the selected form
+        const formKeyMap = {
+            'rename': 'rename',
+            'change-category': 'changeCategory',
+            'merge': 'merge',
+            'delete': 'delete'
+        };
+        const formToShow = forms[formKeyMap[selectedAction]];
+        if (formToShow) {
+            formToShow.classList.remove('hidden');
+        }
+    }
+
+    /**
+     * Fetches tags for the Tag Explorer based on the current state.
+     */
+    async function fetchExplorerTags() {
+        explorer.loadingMessage.classList.remove('hidden');
+        explorer.tagList.innerHTML = '';
+        explorer.pagination.innerHTML = '';
+
+        const params = new URLSearchParams({
+            q: explorerState.query,
+            orphans_only: explorerState.showOrphans,
+            sort_by: explorerState.sortBy,
+            page: explorerState.currentPage,
+            limit: 50
+        });
+        
         try {
-            const response = await fetch('/api/tags/summary');
+            const response = await fetch(`/api/tags/search?${params.toString()}`);
             if (!response.ok) throw new Error('Network response was not ok.');
             
             const data = await response.json();
-            allTags = data.tags; 
-            untaggedCount = data.untagged_count;
-            applyFiltersAndRender();
+            explorerTagCountSpan.textContent = data.total.toLocaleString();
+            renderExplorerList(data.tags);
+            renderPagination(data);
         } catch (err) {
-            console.error('Error fetching tags:', err);
-            tagListElem.innerHTML = '<li class="tag-item" style="text-align: center; color: var(--color-danger);">Error loading tags. Please refresh the page.</li>';
+            console.error('Error fetching tags for explorer:', err);
+            explorer.tagList.innerHTML = '<li class="tag-item" style="text-align: center; color: var(--color-danger);">Error loading tags.</li>';
         } finally {
-            loadingMessage.style.display = 'none';
+            explorer.loadingMessage.classList.add('hidden');
         }
     }
-
+    
     /**
-     * Applies the current filter and sort settings to the master tag list
-     * and calls the render function.
+     * Renders the list of tags in the Tag Explorer.
+     * @param {Array<Object>} tags - The array of tag objects to render.
      */
-    function applyFiltersAndRender() {
-        let tagsToRender = [...allTags];
-        const filterText = filterInput.value.trim().toLowerCase();
-
-        if (filterText) {
-            tagsToRender = tagsToRender.filter(tag => tag.name.toLowerCase().includes(filterText));
-        }
-        if (showOrphansOnlyCheckbox.checked) {
-            tagsToRender = tagsToRender.filter(tag => tag.count === 0 && !(tag.name === 'favorite' && tag.category === 'metadata'));
+    function renderExplorerList(tags) {
+        if (tags.length === 0) {
+            explorer.tagList.innerHTML = '<li class="tag-item" style="text-align: center;">No tags match the current search.</li>';
+            return;
         }
 
-        if (currentSort === 'name') {
-            // Sort by category first, then by name for logical grouping.
-            tagsToRender.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name));
-        } else { // currentSort === 'count'
-            tagsToRender.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
-        }
-        
-        visibleTagCountSpan.textContent = tagsToRender.length;
-        renderTagList(tagsToRender);
-    }
-
-    /**
-     * Renders a list of tag objects into the DOM.
-     * @param {Array<Object>} tags - The filtered and sorted array of tag objects to render.
-     */
-    function renderTagList(tags) {
-        tagListElem.innerHTML = '';
-        let listHasContent = false;
-        
-        // --- Handle special items (Favorite and Untagged) ---
-        // These only appear when no filters are active.
-        const shouldShowSpecialItems = !filterInput.value && !showOrphansOnlyCheckbox.checked;
-
-        // Find the favorite tag in the master list.
-        const favoriteTag = allTags.find(tag => tag.category === 'metadata' && tag.name === 'favorite');
-
-        if (favoriteTag && shouldShowSpecialItems) {
-            const li = document.createElement('li');
-            li.className = 'tag-item';
-            li.id = `tag-item-${favoriteTag.id}`;
-            const categoryOptions = VALID_CATEGORIES.map(c => `<option value="${c}" ${c === favoriteTag.category ? 'selected' : ''}>${c}</option>`).join('');
-
-            li.innerHTML = `
-                <div class="tag-display">
-                    <div>
-                        <a href="/gallery?q=${encodeURIComponent('metadata:favorite')}" class="tag-name-link tag-pill tag-metadata" data-tag="metadata:favorite">favorite</a>
-                        <span class="tag-count" style="margin-left: 0.5rem;">(${favoriteTag.count})</span>
-                    </div>
-                </div>
-            `;
-            tagListElem.appendChild(li);
-            listHasContent = true;
-        }
-        
-        if (untaggedCount > 0 && shouldShowSpecialItems) {
-            const untaggedLi = document.createElement('li');
-            untaggedLi.className = 'tag-item';
-            untaggedLi.innerHTML = `
-                <div class="tag-display">
-                    <div>
-                        <a href="/gallery?q=untagged" class="tag-name-link tag-pill tag-metadata">untagged</a>
-                        <span class="tag-count">(${untaggedCount})</span>
-                    </div>
-                </div>
-            `;
-            tagListElem.appendChild(untaggedLi);
-            listHasContent = true;
-        }
-
-        // --- Render the main, filtered list of tags ---
+        const fragment = document.createDocumentFragment();
         tags.forEach(tag => {
-            // If special items are shown, don't render the favorite tag a second time.
-            if (shouldShowSpecialItems && tag.id === favoriteTag?.id) {
-                return;
-            }
-
             const li = document.createElement('li');
             li.className = 'tag-item';
-            li.id = `tag-item-${tag.id}`;
             const categoryClass = getTagCategoryClass(tag.category);
             const fullTagName = tag.category === 'general' ? tag.name : `${tag.category}:${tag.name}`;
-            const categoryOptions = VALID_CATEGORIES.map(c => `<option value="${c}" ${c === tag.category ? 'selected' : ''}>${c}</option>`).join('');
 
             li.innerHTML = `
                 <div class="tag-display">
@@ -142,81 +143,124 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="tag-count">(${tag.count})</span>
                     </div>
                     <div class="tag-controls">
-                        <button class="edit-btn action-button" data-tag-id="${tag.id}">Edit</button>
-                        <button class="force-delete-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Force Delete</button>
+                        <button class="quick-action-btn action-button" data-action="rename" data-tag-id="${tag.id}" data-full-name="${fullTagName}">Rename</button>
+                        <button class="quick-action-btn action-button" data-action="merge" data-tag-id="${tag.id}" data-full-name="${fullTagName}">Merge</button>
+                        <button class="quick-action-btn action-button" data-action="change-category" data-tag-id="${tag.id}" data-full-name="${fullTagName}">Category</button>
+                        <button class="quick-action-btn action-button danger-action" data-action="delete" data-tag-id="${tag.id}" data-full-name="${fullTagName}">Delete</button>
                     </div>
-                </div>
-                <div class="edit-form hidden" id="edit-form-${tag.id}">
-                    <div class="edit-action-group">
-                        <input type="text" value="${tag.name}" id="rename-input-${tag.id}" placeholder="New name...">
-                        <button class="rename-btn action-button" data-tag-id="${tag.id}">Rename</button>
-                    </div>
-                    <div class="edit-action-group">
-                        <span>Change category to:</span>
-                        <select id="category-select-${tag.id}">${categoryOptions}</select>
-                        <button class="change-category-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Save Category</button>
-                    </div>
-                    <span>or</span>
-                    <div class="edit-action-group merge-group">
-                        <span>merge into:</span>
-                        <div class="autocomplete-container merge-autocomplete">
-                             <input type="text" id="merge-input-${tag.id}" placeholder="Type a tag name..." autocomplete="off" data-tag-id-to-keep="">
-                             <div id="suggestions-merge-${tag.id}" class="suggestions"></div>
-                        </div>
-                        <button class="merge-btn action-button" data-tag-id="${tag.id}" data-tag-name="${tag.name}">Merge</button>
-                    </div>
-                    <button class="cancel-btn action-button" data-tag-id="${tag.id}">Cancel</button>
                 </div>
             `;
-            tagListElem.appendChild(li);
-            listHasContent = true;
+            fragment.appendChild(li);
         });
+        explorer.tagList.appendChild(fragment);
+    }
+    
+    /**
+     * Renders pagination controls for the Tag Explorer.
+     * @param {Object} data - The response object from the API, containing pagination info.
+     */
+    function renderPagination(data) {
+        const { page, total, limit } = data;
+        const totalPages = Math.ceil(total / limit);
+        if (totalPages <= 1) return;
 
-        if (!listHasContent) {
-            tagListElem.innerHTML = '<li class="tag-item" style="text-align: center;">No tags match the current filters.</li>';
+        let paginationHtml = '';
+        if (page > 1) {
+            paginationHtml += `<button class="pagination-btn" data-page="${page - 1}">&laquo; Prev</button>`;
+        }
+        
+        paginationHtml += `<span>Page ${page} of ${totalPages}</span>`;
+
+        if (data.has_more) {
+            paginationHtml += `<button class="pagination-btn" data-page="${page + 1}">Next &raquo;</button>`;
+        }
+        explorer.pagination.innerHTML = paginationHtml;
+    }
+
+    /**
+     * Populates the category dropdown from the global VALID_CATEGORIES constant.
+     */
+    function populateCategoryDropdown() {
+        // VALID_CATEGORIES is expected to be in ui_helpers.js
+        if (typeof VALID_CATEGORIES !== 'undefined') {
+            inputs.categoryNewCategory.innerHTML = VALID_CATEGORIES
+                .map(c => `<option value="${c}">${c}</option>`)
+                .join('');
         }
     }
     
     /**
-     * Toggles the visibility of a tag's edit form and initializes its autocomplete component.
-     * @param {string} tagId - The ID of the tag whose form should be toggled.
+     * Fetches a single tag object by its full name (e.g., 'artist:someone')
+     * to resolve its ID for action panel operations.
+     * @param {string} fullTagName - The full name of the tag.
+     * @returns {Promise<Object|null>} A promise that resolves to the tag object or null.
      */
-    function toggleEditForm(tagId) {
-        const form = document.getElementById(`edit-form-${tagId}`);
-        if (!form) return;
-        
-        const isNowHidden = form.classList.toggle('hidden');
-        
-        if (!isNowHidden) {
-            const mergeInput = document.getElementById(`merge-input-${tagId}`);
-            const suggestionsBox = document.getElementById(`suggestions-merge-${tagId}`);
+    async function findTagObjectByName(fullTagName) {
+        const parsed = parseTag(fullTagName);
+        const params = new URLSearchParams({
+            q: `${parsed.category}:${parsed.name}`,
+            limit: 1
+        });
+        const response = await fetch(`/api/tags/search?${params.toString()}`);
+        const data = await response.json();
+        // Ensure an exact match since the search is case-insensitive and uses 'like'.
+        const foundTag = data.tags.find(t => t.name === parsed.name && t.category === parsed.category);
+        return foundTag || null;
+    }
+    
+    /**
+     * Sets up all autocomplete inputs in the Action Panel.
+     * This now correctly finds and passes the required suggestion containers.
+     */
+    function setupAllAutocompletes() {
+        const bindAutocomplete = (inputEl, suggestionsEl, idEl) => {
             // setupTagAutocomplete is expected to be in autocomplete.js
-            setupTagAutocomplete(mergeInput, suggestionsBox, { onSelect: (selectedTag) => {
-                const parsed = parseTag(selectedTag);
-                const tagObject = allTags.find(t => t.name === parsed.name && t.category === parsed.category);
-                if (tagObject) {
-                    mergeInput.value = selectedTag;
-                    mergeInput.dataset.tagIdToKeep = tagObject.id;
+            // It requires both the input and a suggestions container element.
+            setupTagAutocomplete(inputEl, suggestionsEl, {
+                onSelect: async (selectedTag) => {
+                    const tagObject = await findTagObjectByName(selectedTag);
+                    if (tagObject) {
+                        inputEl.value = selectedTag; // Keep full name for display
+                        idEl.value = tagObject.id;
+                    } else {
+                        showToast(`Could not verify selected tag: ${selectedTag}`, 'error');
+                        idEl.value = '';
+                    }
                 }
-            }});
-            form.querySelector('input[type="text"]').focus();
-        }
+            });
+            // Clear the hidden ID if the user manually changes the input text
+            inputEl.addEventListener('input', () => {
+                if (idEl.value) { idEl.value = ''; }
+            });
+        };
+
+        // Get all suggestion containers from the DOM
+        const suggestions = {
+            rename: document.getElementById('suggestions-rename'),
+            category: document.getElementById('suggestions-category'),
+            mergeDelete: document.getElementById('suggestions-merge-delete'),
+            mergeKeep: document.getElementById('suggestions-merge-keep'),
+            delete: document.getElementById('suggestions-delete'),
+        };
+
+        bindAutocomplete(inputs.renameTag, suggestions.rename, inputs.renameTagId);
+        bindAutocomplete(inputs.categoryTag, suggestions.category, inputs.categoryTagId);
+        bindAutocomplete(inputs.mergeDeleteTag, suggestions.mergeDelete, inputs.mergeDeleteTagId);
+        bindAutocomplete(inputs.mergeKeepTag, suggestions.mergeKeep, inputs.mergeKeepTagId);
+        bindAutocomplete(inputs.deleteTag, suggestions.delete, inputs.deleteTagId);
     }
 
     // --- 4. API HANDLERS ---
+    
+    async function handleRename() {
+        const tagId = inputs.renameTagId.value;
+        const newName = inputs.renameNewName.value.trim();
+        const oldTagName = inputs.renameTag.value;
 
-    /**
-     * Handles the API call to rename a tag.
-     * @param {string} tagId - The ID of the tag to rename.
-     */
-    async function handleRename(tagId) {
-        const newName = document.getElementById(`rename-input-${tagId}`).value.trim();
-        if (!newName) {
-            showToast('New tag name cannot be empty.', 'info');
-            return;
-        }
-        // showConfirmation is expected to be in notifications.js
-        const confirmed = await showConfirmation(`Are you sure you want to rename this tag to "${newName}"?`);
+        if (!tagId) { showToast('Please select a valid tag to rename.', 'info'); return; }
+        if (!newName) { showToast('New name cannot be empty.', 'info'); return; }
+
+        const confirmed = await showConfirmation(`Rename "${oldTagName}" to "${newName}"?`);
         if (!confirmed) return;
 
         try {
@@ -228,24 +272,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail);
             showToast(result.message, 'success');
-            await fetchAndInitialize();
+            // Reset form and refresh explorer
+            inputs.renameTag.value = '';
+            inputs.renameTagId.value = '';
+            inputs.renameNewName.value = '';
+            fetchExplorerTags();
         } catch (err) {
             showToast(`Rename failed: ${err.message}`, 'error');
-        } finally {
-            toggleEditForm(tagId);
         }
     }
+    
+    async function handleChangeCategory() {
+        const tagId = inputs.categoryTagId.value;
+        const newCategory = inputs.categoryNewCategory.value;
+        const tagName = inputs.categoryTag.value;
 
-    /**
-     * Handles the API call to change a tag's category.
-     * @param {string} tagId - The ID of the tag to change.
-     * @param {string} tagName - The name of the tag for the confirmation dialog.
-     */
-    async function handleChangeCategory(tagId, tagName) {
-        const newCategory = document.getElementById(`category-select-${tagId}`).value;
+        if (!tagId) { showToast('Please select a valid tag to change.', 'info'); return; }
+        
         const confirmed = await showConfirmation(`Change category of "${tagName}" to "${newCategory}"?`);
         if (!confirmed) return;
-
+        
         try {
             const response = await fetch(`/api/tags/change_category/${tagId}`, {
                 method: 'POST',
@@ -255,30 +301,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail);
             showToast(result.message, 'success');
-            await fetchAndInitialize();
+            inputs.categoryTag.value = '';
+            inputs.categoryTagId.value = '';
+            fetchExplorerTags();
         } catch (err) {
             showToast(`Category change failed: ${err.message}`, 'error');
-        } finally {
-            toggleEditForm(tagId);
         }
     }
+    
+    async function handleMerge() {
+        const tagIdToDelete = inputs.mergeDeleteTagId.value;
+        const tagIdToKeep = inputs.mergeKeepTagId.value;
+        const tagNameToDelete = inputs.mergeDeleteTag.value;
+        const tagNameToKeep = inputs.mergeKeepTag.value;
 
-    /**
-     * Handles the API call to merge two tags.
-     * @param {string} tagIdToDelete - The ID of the tag that will be merged and deleted.
-     * @param {string} tagNameToDelete - The name of the tag for the confirmation dialog.
-     */
-    async function handleMerge(tagIdToDelete, tagNameToDelete) {
-        const mergeInput = document.getElementById(`merge-input-${tagIdToDelete}`);
-        const tagIdToKeep = mergeInput.dataset.tagIdToKeep;
+        if (!tagIdToDelete || !tagIdToKeep) { showToast('Please select both tags for merging.', 'info'); return; }
+        if (tagIdToDelete === tagIdToKeep) { showToast('Cannot merge a tag with itself.', 'info'); return; }
 
-        if (!tagIdToKeep) {
-            showToast('Please select a tag to merge into from the suggestions.', 'info');
-            return;
-        }
-        
-        const tagToKeepName = mergeInput.value;
-        const confirmed = await showConfirmation(`Merge "${tagNameToDelete}" into "${tagToKeepName}"? This will delete "${tagNameToDelete}".`);
+        const confirmed = await showConfirmation(`Merge "${tagNameToDelete}" into "${tagNameToKeep}"? This will delete "${tagNameToDelete}".`);
         if (!confirmed) return;
 
         const formData = new FormData();
@@ -290,20 +330,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail);
             showToast(result.message, 'success');
-            await fetchAndInitialize();
+            inputs.mergeDeleteTag.value = '';
+            inputs.mergeDeleteTagId.value = '';
+            inputs.mergeKeepTag.value = '';
+            inputs.mergeKeepTagId.value = '';
+            fetchExplorerTags();
         } catch (err) {
             showToast(`Merge failed: ${err.message}`, 'error');
-        } finally {
-            toggleEditForm(tagIdToDelete);
         }
     }
     
-    /**
-     * Handles the API call to permanently delete a tag from the database.
-     * @param {string} tagId - The ID of the tag to delete.
-     * @param {string} tagName - The name of the tag for the confirmation dialog.
-     */
-    async function handleForceDelete(tagId, tagName) {
+    async function handleDelete() {
+        const tagId = inputs.deleteTagId.value;
+        const tagName = inputs.deleteTag.value;
+        
+        if (!tagId) { showToast('Please select a valid tag to delete.', 'info'); return; }
+
         const confirmed = await showConfirmation(`PERMANENTLY DELETE the tag "${tagName}"? This cannot be undone.`);
         if (!confirmed) return;
 
@@ -312,64 +354,133 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail);
             showToast(result.message, 'success');
-            await fetchAndInitialize();
+            inputs.deleteTag.value = '';
+            inputs.deleteTagId.value = '';
+            fetchExplorerTags();
         } catch (err) {
             showToast(`Deletion failed: ${err.message}`, 'error');
         }
     }
+    
+    async function handleDeleteAllOrphans() {
+        const confirmed = await showConfirmation(`Are you sure you want to delete ALL orphan tags? This cannot be undone.`);
+        if (!confirmed) return;
 
+        try {
+            const response = await fetch('/api/tags/delete_orphans', { method: 'POST' });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.detail);
+            showToast(result.message, 'success');
+            fetchExplorerTags(); // Refresh the list
+        } catch (err) {
+            showToast(`Failed to delete orphan tags: ${err.message}`, 'error');
+        }
+    }
+    
     // --- 5. INITIALIZATION & EVENT LISTENERS ---
 
-    /**
-     * Attaches all event listeners for the page.
-     */
     function initializeEventListeners() {
-        // Listeners for the top filter/sort controls.
-        filterInput.addEventListener('input', applyFiltersAndRender);
-        showOrphansOnlyCheckbox.addEventListener('change', applyFiltersAndRender);
+        // Action Panel
+        actionSelect.addEventListener('change', switchActionForm);
+        buttons.rename.addEventListener('click', handleRename);
+        buttons.changeCategory.addEventListener('click', handleChangeCategory);
+        buttons.merge.addEventListener('click', handleMerge);
+        buttons.delete.addEventListener('click', handleDelete);
+        buttons.deleteAllOrphans.addEventListener('click', handleDeleteAllOrphans);
 
-        sortByNameBtn.addEventListener('click', () => {
-            currentSort = 'name';
-            sortByNameBtn.classList.add('active');
-            sortByCountBtn.classList.remove('active');
-            applyFiltersAndRender();
-        });
-
-        sortByCountBtn.addEventListener('click', () => {
-            currentSort = 'count';
-            sortByCountBtn.classList.add('active');
-            sortByNameBtn.classList.remove('active');
-            applyFiltersAndRender();
+        // Tag Explorer Controls
+        let searchTimeout;
+        explorer.searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                explorerState.query = explorer.searchInput.value.trim();
+                explorerState.currentPage = 1;
+                fetchExplorerTags();
+            }, 300); // Debounce search input
         });
         
-        // A single delegated event listener for all actions on the tag list.
-        tagListElem.addEventListener('click', (e) => {
+        explorer.showOrphansOnly.addEventListener('change', () => {
+            explorerState.showOrphans = explorer.showOrphansOnly.checked;
+            explorerState.currentPage = 1;
+            fetchExplorerTags();
+        });
+        
+        explorer.sortSelect.addEventListener('change', () => {
+            explorerState.sortBy = explorer.sortSelect.value;
+            explorerState.currentPage = 1;
+            fetchExplorerTags();
+        });
+        
+        // Delegated listener for pagination, quick actions, and mobile toggling
+        explorer.tagList.parentElement.addEventListener('click', (e) => {
             const target = e.target;
-            const tagId = target.dataset.tagId;
-            const isActionButton = target.matches('.action-button');
             
-            // Only prevent default for actual buttons, not links.
-            if (isActionButton) {
-                e.preventDefault();
+            // Pagination
+            if (target.matches('.pagination-btn')) {
+                explorerState.currentPage = parseInt(target.dataset.page, 10);
+                fetchExplorerTags();
+                return; // Prevent other handlers from firing
             }
 
-            if (!tagId) return;
+            // Quick Actions
+            const quickActionButton = target.closest('.quick-action-btn');
+            if (quickActionButton) {
+                e.preventDefault();
+                const action = quickActionButton.dataset.action;
+                const tagId = quickActionButton.dataset.tagId;
+                const fullName = quickActionButton.dataset.fullName;
+                
+                if (action === 'rename') {
+                    actionSelect.value = 'rename';
+                    switchActionForm();
+                    inputs.renameTag.value = fullName;
+                    inputs.renameTagId.value = tagId;
+                    inputs.renameNewName.focus();
+                } else if (action === 'merge') {
+                    actionSelect.value = 'merge';
+                    switchActionForm();
+                    inputs.mergeDeleteTag.value = fullName;
+                    inputs.mergeDeleteTagId.value = tagId;
+                    inputs.mergeKeepTag.focus();
+                } else if (action === 'change-category') {
+                    actionSelect.value = 'change-category';
+                    switchActionForm();
+                    inputs.categoryTag.value = fullName;
+                    inputs.categoryTagId.value = tagId;
+                    inputs.categoryNewCategory.focus();
+                } else if (action === 'delete') {
+                    actionSelect.value = 'delete';
+                    switchActionForm();
+                    inputs.deleteTag.value = fullName;
+                    inputs.deleteTagId.value = tagId;
+                    buttons.delete.focus();
+                }
+                
+                // Scroll to the top to see the action panel
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return; // Prevent other handlers from firing
+            }
 
-            if (target.matches('.edit-btn') || target.matches('.cancel-btn')) {
-                toggleEditForm(tagId);
-            } else if (target.matches('.rename-btn')) {
-                handleRename(tagId);
-            } else if (target.matches('.merge-btn')) {
-                handleMerge(tagId, target.dataset.tagName);
-            } else if (target.matches('.force-delete-btn')) {
-                handleForceDelete(tagId, target.dataset.tagName);
-            } else if (target.matches('.change-category-btn')) {
-                handleChangeCategory(tagId, target.dataset.tagName);
+            // Mobile tap-to-reveal logic
+            const clickedItem = target.closest('.tag-item');
+            if (window.innerWidth <= 768 && clickedItem) {
+                // Don't toggle if a link was clicked
+                if (target.tagName === 'A') return;
+
+                const currentActive = explorer.tagList.querySelector('.tag-item.active');
+                if (currentActive && currentActive !== clickedItem) {
+                    currentActive.classList.remove('active');
+                }
+                clickedItem.classList.toggle('active');
             }
         });
     }
-    
+
     // --- 6. START THE APPLICATION ---
+    explorer.showOrphansOnly.checked = false; // Ensure checkbox is reset on page load
+    switchActionForm(); // Set initial form visibility
+    populateCategoryDropdown();
+    setupAllAutocompletes();
     initializeEventListeners();
-    fetchAndInitialize();
+    fetchExplorerTags(); // Initial load for the explorer
 });
