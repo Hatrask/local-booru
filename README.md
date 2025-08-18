@@ -17,6 +17,7 @@ Please note that this program is in a very early stage of development and should
 *   **Tag Maintenance Tools:** A dedicated page for database-level tag operations, including renaming, merging, deleting, and changing the category of any tag.
 *   **Saved & Recent Searches:** Automatically keeps a list of your recent queries. You can "pin" your most important searches here too.
 *   **Data Management:** Import and export your entire collection, or reset the application, directly from the Settings page in the web interface.
+*   **Browser Extension:** A companion Firefox extension for one-click scraping and uploading of images and their categorized tags directly from Danbooru posts.
 
 ## Getting Started
 
@@ -93,6 +94,16 @@ This method is for macOS, Linux, and Windows users who prefer to run the applica
 4.  **View & Edit:** Click any image to open it in the lightbox. Press `E` to quickly switch to **Edit Mode** and start tagging your collection.
 5.  **Organize:** Use the "Batch Actions" and "Tag Manager" pages for large-scale organization.
 6.  **Manage Data:** Visit the **Settings** page to import/export your collection, or wipe all your data.
+
+## Browser Extension
+
+A companion browser extension is available for Firefox to allow instant scraping and uploading of an image and its tags from a Danbooru post page directly into your local-booru with a single click.
+
+*   **One-Click Upload:** Sends the image and its associated tags from the current Danbooru post to the local booru server.
+*   **Categorized Tag Extraction:** Extracts all tags from the page and prefixes them with their corresponding category.
+*   **Image URL Detection:** Identifies and uses the highest quality image URL available on the page.
+
+The extension is a separate project and needs to be loaded manually into Firefox. For more information, [visit its repository](https://github.com/Hatrask/local-booru-ext-helper-firefox).
 
 ## File Structure
 

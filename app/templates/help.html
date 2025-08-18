@@ -19,7 +19,8 @@
                 <li><a href="#categories">3. The Tag Category System</a></li>
                 <li><a href="#advanced">4. Advanced Management</a></li>
                 <li><a href="#settings">5. Settings & Data Management</a></li>
-                <li><a href="#shortcuts">6. Keyboard Shortcuts</a></li>
+                <li><a href="#shortcuts">6. Keyboard Shortcuts & Gestures</a></li>
+                <li><a href="#extension">7. Browser Extension</a></li>
             </ul>
         </div>
 
@@ -196,14 +197,15 @@
             </ol>
         </div>
 
-        <!-- Section 6: Keyboard Shortcuts -->
-        <h3 id="shortcuts">6. Keyboard Shortcuts</h3>
-        <p>You can navigate the site quickly using your keyboard.</p>
+        <!-- Section 6: Keyboard Shortcuts & Gestures -->
+        <h3 id="shortcuts">6. Keyboard Shortcuts & Gestures</h3>
+        <p>You can navigate the site quickly using your keyboard or touch gestures.</p>
         
         <h4>In the Gallery</h4>
         <ul>
             <li><code>A</code> or <code>ArrowLeft</code>: Go to the previous page.</li>
             <li><code>D</code> or <code>ArrowRight</code>: Go to the next page.</li>
+			<li>On touch devices, you can also swipe left or right to navigate.</li>
             <li><code>T</code>: Toggle the tag tooltip display mode on and off.</li>
         </ul>
 
@@ -223,6 +225,25 @@
             <li><code>C</code>: Clear the text in the tag input field.</li>
             <li><code>Escape</code>: Cancel your changes and return to View Mode.</li>
         </ul>
+		
+        <!-- Section 7: Browser Extension -->
+        <h3 id="extension">7. Browser Extension</h3>
+        <p>
+            A <a href="https://github.com/Hatrask/local-booru-ext-helper-firefox" target="_blank">companion browser extension</a> is available for Firefox that allows you to instantly scrape and upload an image and its tags from a Danbooru post page directly into your personal booru with a single click.
+        </p>
+
+        <h4>Usage</h4>
+        <ol>
+            <li>1. Ensure your <code>local-booru</code> server is running.</li>
+            <li>2. Navigate to any image post on the Danbooru website (e.g., <code>danbooru.donmai.us/posts/12345</code>).</li>
+            <li>3. Click the "Local Booru Uploader" icon in your toolbar.</li>
+            <li>4. A notification will pop up to confirm that the upload is complete, if it was a duplicate, or if it failed.</li>
+        </ol>
+
+        <h4>Configuration</h4>
+        <p>
+            The extension is hardcoded to send data to the default <code>local-booru</code> server address. If you are running your server on a different IP address or port, you will need to edit the <code>background.js</code> file in the extension's source code and change the URL at the top of the file to match your server's address.
+        </p>
     </div>
 	<script src="/static/js/ui_helpers.js"></script>
 </body>
