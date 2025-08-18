@@ -154,13 +154,30 @@
         </ol>
 
         <h4>Tag Manager</h4>
-        <p>The <strong><a href="/tag_manager">Tag Manager</a></strong> is for cleaning up the tags themselves, not the images.</p>
+        <p>The <strong><a href="/tag_manager">Tag Manager</a></strong> is a powerful, search-first interface designed for cleaning up tags themselves, especially in very large collections.</p>
+        <h5>The Workflow</h5>
+        <ol>
+            <li>
+                <strong>1. Choose an Action:</strong> At the top of the page, use the dropdown in the "Tag Actions" panel to select what you want to do (e.g., Rename, Merge, Delete).
+            </li>
+            <li>
+                <strong>2. Fill in the Details:</strong> The appropriate form will appear. Use the autocomplete-powered input fields to quickly find and select the tags you want to modify.
+            </li>
+            <li>
+                <strong>3. Find Tags with the Explorer:</strong> If you don't know the exact name of a tag, use the "Tag Explorer" at the bottom of the page. You can search, filter for unused "orphan" tags, and sort the results. Each tag in the explorer has quick-action buttons (Rename, Merge, etc.) that will automatically send it to the correct field in the Action Panel at the top, streamlining the process.
+            </li>
+        </ol>
+        <h5>Available Actions</h5>
         <ul>
             <li><strong>Rename:</strong> Changes a tag's name everywhere it's used (e.g., renaming <code>car</code> to <code>automobile</code>).</li>
-            <li><strong>Change Category:</strong> Changes a tag's category. For example, you can move an incorrectly categorized tag from `general` to `artist`.</li>
+            <li><strong>Change Category:</strong> Moves a tag to a different category. For example, you can move an incorrectly categorized tag from `general` to `artist`.</li>
             <li><strong>Merge:</strong> Combines two tags into one. All images with the "merge-from" tag will be given the "merge-to" tag, and the old tag will be deleted. This is useful for correcting duplicate tags (e.g., merging <code>cat</code> and <code>kitty</code> into just <code>cat</code>).</li>
-            <li><strong>Force Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong></li>
+            <li><strong>Delete:</strong> Deletes a tag from the system entirely, removing it from every image it was on. <strong>This can leave images untagged and cannot be undone.</strong></li>
         </ul>
+        <h5>Orphan Tags</h5>
+        <p>
+            An "orphan" tag is one that isn't used on any images. You can find them by checking the "Show only orphans" box in the Tag Explorer. The "Orphan Tags" panel also provides a button to <strong>Delete All Orphan Tags</strong> at once for quick cleanup.
+        </p>
         
         <!-- Section 5: Settings & Data Management -->
         <h3 id="settings">5. Settings & Data Management</h3>
