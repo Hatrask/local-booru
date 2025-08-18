@@ -582,6 +582,8 @@ def api_search_tags(
 
     if orphans_only:
         query = query.filter(subquery.c.image_count == None)
+        # Also exclude the 'metadata:favorite' tag from the orphan list.
+        query = query.filter(~and_(Tag.category == 'metadata', Tag.name == 'favorite'))
 
     # Apply sorting
     if sort_by == 'name':
