@@ -545,6 +545,89 @@ def api_get_tags_summary(db: Session = Depends(get_db)):
     tags_data = [{"id": tag.id, "name": tag.name, "category": tag.category, "count": count} for tag, count in tags_with_counts]
     return JSONResponse({"tags": tags_data, "untagged_count": untagged_count})
 
+@app.get("/api/tags/search")
+def api_search_tags(
+    q: Optional[str] = Query(None),
+    orphans_only: bool = Query(False),
+    sort_by: str = Query('name', enum=['name', 'count']),
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db)
+):
+    """
+    Provides a paginated and searchable list of tags with their usage counts.
+    This is the primary endpoint for the new Tag Manager.
+    """
+    # Base query with a subquery to get the image count for each tag.
+    subquery = (
+        db.query(tags_table.c.tag_id, func.count(tags_table.c.image_id).label("image_count"))
+        .group_by(tags_table.c.tag_id)
+        .subquery()
+    )
+    
+    query = db.query(Tag, func.coalesce(subquery.c.image_count, 0).label("count")) \
+              .outerjoin(subquery, Tag.id == subquery.c.tag_id)
+
+    # Apply filters
+    if q:
+        query_str = q.strip().lower()
+        if ':' in query_str:
+            category, name_part = query_str.split(':', 1)
+            if category in VALID_CATEGORIES:
+                query = query.filter(Tag.category == category, Tag.name.ilike(f"%{name_part}%"))
+            else:
+                 query = query.filter(Tag.name.ilike(f"%{query_str}%"))
+        else:
+            query = query.filter(Tag.name.ilike(f"%{q}%"))
+
+    if orphans_only:
+        query = query.filter(subquery.c.image_count == None)
+
+    # Apply sorting
+    if sort_by == 'name':
+        query = query.order_by(Tag.category, Tag.name)
+    else: # sort_by == 'count'
+        query = query.order_by(desc("count"), Tag.name)
+
+    total = query.count()
+    tags_with_counts = query.offset((page - 1) * limit).limit(limit).all()
+
+    tags_data = [
+        {"id": tag.id, "name": tag.name, "category": tag.category, "count": count}
+        for tag, count in tags_with_counts
+    ]
+    
+    return JSONResponse({
+        "tags": tags_data,
+        "page": page,
+        "limit": limit,
+        "total": total,
+        "has_more": (page * limit) < total
+    })
+
+
+@app.post("/api/tags/delete_orphans")
+def api_delete_orphan_tags(db: Session = Depends(get_db)):
+    """
+    Finds and deletes all tags that are not associated with any images.
+    It deliberately excludes the 'metadata:favorite' tag.
+    """
+    orphan_tags_query = (
+        db.query(Tag)
+        .filter(~Tag.images.any())
+        .filter(~and_(Tag.name == 'favorite', Tag.category == 'metadata'))
+    )
+    
+    orphan_tags = orphan_tags_query.all()
+    deleted_count = len(orphan_tags)
+
+    if deleted_count > 0:
+        for tag in orphan_tags:
+            db.delete(tag)
+        db.commit()
+
+    return JSONResponse({"message": f"Successfully deleted {deleted_count} orphan tag(s)."})
+
 @app.post("/api/tags/force_delete/{tag_id}")
 def api_force_delete_tag(tag_id: int, db: Session = Depends(get_db)):
     tag = db.query(Tag).filter(Tag.id == tag_id).first()
