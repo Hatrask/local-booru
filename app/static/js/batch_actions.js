@@ -205,6 +205,11 @@ document.addEventListener('DOMContentLoaded', () => {
 	function initializeEventListeners() {
 		// Setup listeners for all the batch action controls
 		galleryGrid.addEventListener('click', (e) => {
+			// If the user clicked on a tag pill, let the browser handle the navigation
+			// and don't treat it as a selection click.
+			if (e.target.closest('.tag-pill')) {
+				return;
+			}
 			const thumb = e.target.closest('.thumb');
 			if (thumb) {
 				const id = parseInt(thumb.dataset.imageId);
