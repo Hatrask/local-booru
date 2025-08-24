@@ -85,17 +85,20 @@
         </ul>
         
         <h5>Advanced Operators</h5>
+        <p>You can create more complex queries using the <code>OR</code> and <code>NOT</code> operators.</p>
         <ul>
             <li>
-                <strong>OR Logic:</strong> Use parentheses with a vertical bar (<code>|</code>).
+                <strong>OR Logic:</strong> Use the word <code>OR</code> between tags to find images that have <strong>either</strong> tag. This works at the top level of a query.
                 <ul class="example-list">
-                    <li><code>(cat|dog)</code> - Finds images with either the <code>cat</code> OR <code>dog</code> tag.</li>
+                    <li><code>cat OR dog</code> - Finds images with either the <code>cat</code> OR <code>dog</code> tag.</li>
+                    <li><code>character:reimu_hakurei OR character:marisa_kirisame</code> - Finds images of either character.</li>
+                    <li><code>cat, blue_eyes OR dog, brown_eyes</code> - Finds images that are (<code>cat</code> AND <code>blue_eyes</code>) OR (<code>dog</code> AND <code>brown_eyes</code>).</li>
                 </ul>
             </li>
             <li>
-                <strong>Exclusion (NOT):</strong> To exclude images with a certain tag, prefix it with a hyphen (<code>-</code>).
+                <strong>Exclusion (NOT):</strong> To exclude images with a certain tag, prefix the tag with a hyphen (<code>-</code>).
                 <ul class="example-list">
-                    <li><code>-dog</code> - Finds all images that do NOT have the <code>dog</code> tag.</li>
+                    <li><code>cat, -dog</code> - Finds images that have the <code>cat</code> tag but do NOT have the <code>dog</code> tag.</li>
                     <li><code>-character:reimu_hakurei</code> - Finds all images that are NOT of that character.</li>
                 </ul>
             </li>
