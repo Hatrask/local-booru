@@ -32,7 +32,7 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
      * @returns {{prefix: string, term: string}}
      */
     function getAutocompleteContext(fullQuery) {
-        const parts = fullQuery.split(/,|\sAND\s|\sOR\s|\\||\(/i);
+        const parts = fullQuery.split(new RegExp(',|\\sAND\\s|\\sOR\\s', 'i'));
         const currentTerm = parts[parts.length - 1].trimStart();
         const prefixLength = fullQuery.length - currentTerm.length;
         const prefix = fullQuery.substring(0, prefixLength);
