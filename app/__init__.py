@@ -111,10 +111,30 @@ app.add_middleware(
 )
 
 # --- Database Configuration (SQLite) ---
+db_path = DATABASE_URL.replace("sqlite:///", "")
+is_new_db = not os.path.exists(db_path)
+
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
+
+# If the database was just created, add the special 'favorite' tag as an orphan.
+if is_new_db:
+    from .database import Tag
+    # We need a new session to interact with the newly created DB
+    db = SessionLocal()
+    try:
+        print("INFO:     First run detected. Creating 'metadata:favorite' tag...")
+        favorite_tag = Tag(name='favorite', category='metadata')
+        db.add(favorite_tag)
+        db.commit()
+        print("INFO:     'metadata:favorite' tag created successfully.")
+    except Exception as e:
+        print(f"ERROR:    Failed to create 'metadata:favorite' tag. Reason: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 # --- Database Session Dependency ---
 def get_db():
