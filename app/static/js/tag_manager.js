@@ -477,7 +477,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- 6. START THE APPLICATION ---
-    explorer.showOrphansOnly.checked = false; // Ensure checkbox is reset on page load
+
+    function initializeUIState() {
+        // Reset explorer form fields on page load to prevent browser caching issues
+        explorer.searchInput.value = '';
+        explorer.sortSelect.value = 'name'; // Default sort
+        explorer.showOrphansOnly.checked = false;
+    }
+
+    initializeUIState();
     switchActionForm(); // Set initial form visibility
     populateCategoryDropdown();
     setupAllAutocompletes();
