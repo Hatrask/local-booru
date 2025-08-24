@@ -87,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch('/api/factory_reset', { method: 'POST' });
             const result = await response.json();
             if (!response.ok) throw new Error(result.detail);
+
+            // Factory reset is scheduled, now clear client-side storage too.
+            localStorage.clear();
+
             showToast(result.message, 'success');
             factoryResetBtn.textContent = 'Restart Pending';
         } catch (error) {
