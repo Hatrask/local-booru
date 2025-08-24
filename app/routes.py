@@ -276,8 +276,14 @@ def api_get_images(
             and_groups = [group.strip() for group in q_processed.split(',') if group.strip()]
             all_conditions = []
             for group in and_groups:
-                is_negative = group.startswith('-')
-                group_content = group[1:] if is_negative else group
+                # To handle 'tag1 or tag2' without parentheses, we can dynamically wrap it
+                # to leverage the existing parenthesized-group logic.
+                temp_group = group
+                if ' or ' in temp_group and not (temp_group.startswith('(') and temp_group.endswith(')')):
+                    temp_group = f"({temp_group})"
+
+                is_negative = temp_group.startswith('-')
+                group_content = temp_group[1:] if is_negative else temp_group
                 
                 # Handle OR groups like `(tag1|tag2)`
                 if group_content.startswith('(') and group_content.endswith(')'):
@@ -295,8 +301,9 @@ def api_get_images(
                             condition = Image.tags.any(and_(Tag.name.ilike(name_filt.replace('*', '%')), Tag.category == cat_filt)) if '*' in name_filt else Image.tags.any(and_(Tag.name == name_filt, Tag.category == cat_filt))
                             or_conditions.append(condition)
                         
-                        final_or_condition = or_(*or_conditions)
-                        all_conditions.append(~final_or_condition if is_negative else final_or_condition)
+                        if or_conditions:
+                            final_or_condition = or_(*or_conditions)
+                            all_conditions.append(~final_or_condition if is_negative else final_or_condition)
                 else:
                     # Handle standard AND tags
                     cat_filt, name_filt = ('general', group_content)

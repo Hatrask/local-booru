@@ -33,10 +33,29 @@ function setupTagAutocomplete(inputElement, suggestionsContainer, options = {}) 
      */
     function getAutocompleteContext(fullQuery) {
         const parts = fullQuery.split(new RegExp(',|\\sAND\\s|\\sOR\\s', 'i'));
-        const currentTerm = parts[parts.length - 1].trimStart();
-        const prefixLength = fullQuery.length - currentTerm.length;
-        const prefix = fullQuery.substring(0, prefixLength);
-        return { prefix, term: currentTerm.toLowerCase() };
+        const currentTermWithLeadingSpace = parts[parts.length - 1];
+
+        // The prefix is everything up to the last part
+        const prefixUpToLastPart = fullQuery.substring(0, fullQuery.length - currentTermWithLeadingSpace.length);
+
+        const trimmedPart = currentTermWithLeadingSpace.trimStart();
+
+        const spacePrefix = currentTermWithLeadingSpace.substring(0, currentTermWithLeadingSpace.length - trimmedPart.length);
+
+        let termForApi = trimmedPart;
+        let finalPrefix = prefixUpToLastPart + spacePrefix;
+
+        if (trimmedPart.startsWith('-')) {
+            // Don't treat a lone hyphen as a term to search for
+            if (trimmedPart.length > 1) {
+                termForApi = trimmedPart.substring(1);
+            } else {
+                termForApi = '';
+            }
+            finalPrefix += '-';
+        }
+
+        return { prefix: finalPrefix, term: termForApi.toLowerCase() };
     }
 
     /**
