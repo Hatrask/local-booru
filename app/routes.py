@@ -15,7 +15,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import desc, func, or_, and_
+from sqlalchemy import desc, func, or_, and_, text
 
 # Import app components from the app package
 from . import app, templates, get_db, MEDIA_DIR, THUMBNAIL_DIR, UNDO_STATE_FILE, PROJECT_ROOT
@@ -693,24 +693,32 @@ def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends
 
 @app.post("/api/tags/merge")
 def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form(...), db: Session = Depends(get_db)):
-    if tag_id_to_keep == tag_id_to_delete: raise HTTPException(status_code=400, detail="Cannot merge a tag with itself.")
+    """
+    Merges one tag into another. This implementation uses raw SQL for high
+    performance, especially when dealing with tags that have a very large
+    number of associated images. It avoids loading all images into memory.
+    """
+    if tag_id_to_keep == tag_id_to_delete:
+        raise HTTPException(status_code=400, detail="Cannot merge a tag with itself.")
     
     tag_to_keep = db.query(Tag).filter(Tag.id == tag_id_to_keep).first()
-    tag_to_delete = db.query(Tag).options(selectinload(Tag.images)).filter(Tag.id == tag_id_to_delete).first()
+    tag_to_delete = db.query(Tag).filter(Tag.id == tag_id_to_delete).first()
     
-    if not tag_to_keep or not tag_to_delete: raise HTTPException(status_code=404, detail="One or both tags were not found.")
+    if not tag_to_keep or not tag_to_delete:
+        raise HTTPException(status_code=404, detail="One or both tags were not found.")
     
-    # Re-assign all images from the deleted tag to the kept tag.
-    # This allows for merging across categories.
-    for image in tag_to_delete.images:
-        if tag_to_keep not in image.tags:
-            image.tags.append(tag_to_keep)
-
-    # After merging, the kept tag has been "used", so update its timestamp.
+    insert_stmt = text("""
+        INSERT INTO image_tags (image_id, tag_id)
+        SELECT image_id, :tag_id_to_keep
+        FROM image_tags
+        WHERE tag_id = :tag_id_to_delete
+        ON CONFLICT(image_id, tag_id) DO NOTHING
+    """)
+    db.execute(insert_stmt, {"tag_id_to_keep": tag_id_to_keep, "tag_id_to_delete": tag_id_to_delete})
+    
     tag_to_keep.last_used_at = datetime.now(timezone.utc)
-    
-    tag_to_delete.images.clear()
     db.delete(tag_to_delete)
+    
     db.commit()
     return {"message": f"Tag '{tag_to_delete.name}' merged into '{tag_to_keep.name}'."}
 
