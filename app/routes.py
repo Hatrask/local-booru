@@ -242,14 +242,35 @@ async def api_upload_from_url(request: UploadFromUrlRequest, db: Session = Depen
 def api_update_image_tags(image_id: int, request: UpdateTagsRequest, db: Session = Depends(get_db)):
     """
     Replaces all tags on a single image. Designed for the new lightbox editor.
+    This has been optimized to perform a diff, only adding or removing tags
+    that have changed, which is much more efficient than replacing the entire set.
     """
-    image = db.query(Image).options(joinedload(Image.tags)).filter(Image.id == image_id).first()
+    image = db.query(Image).options(selectinload(Image.tags)).filter(Image.id == image_id).first()
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
     
     # The frontend sends a list of raw tag strings (e.g., "artist:someone", "general_tag")
     tag_names = {t.strip().lower() for t in request.tags if t.strip()}
-    image.tags = get_or_create_tags(db, tag_names)
+    
+    # Get Tag objects for the new set of tags, creating any that don't exist.
+    new_tags_list = get_or_create_tags(db, tag_names)
+
+    # --- Efficiently update tags by comparing current and new sets ---
+    # By converting the tag lists to sets, we can quickly find the difference.
+    new_tags_set = set(new_tags_list)
+    current_tags_set = set(image.tags)
+
+    tags_to_add = new_tags_set - current_tags_set
+    tags_to_remove = current_tags_set - new_tags_set
+
+    # Perform the append/remove operations. SQLAlchemy's ORM handles the
+    # underlying INSERT and DELETE statements on the association table.
+    for tag in tags_to_add:
+        image.tags.append(tag)
+    
+    for tag in tags_to_remove:
+        image.tags.remove(tag)
+
     db.commit()
 
     # Return the updated tag list in the standard, sorted format for immediate UI update.
