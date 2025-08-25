@@ -461,13 +461,14 @@ def batch_retag(
     """
     Performs a tag operation (add, remove, or replace) on a batch of images.
     Saves the 'before' state to a file for persistent undo.
+    This version is optimized to only perform necessary INSERT/DELETE operations.
     """
     if action not in {"add", "remove", "replace"}:
         raise HTTPException(status_code=400, detail="Invalid action specified.")
     if not image_ids:
         raise HTTPException(status_code=400, detail="No image IDs provided.")
 
-    images_to_update = db.query(Image).filter(Image.id.in_(image_ids)).options(joinedload(Image.tags)).all()
+    images_to_update = db.query(Image).filter(Image.id.in_(image_ids)).options(selectinload(Image.tags)).all()
     if not images_to_update:
         raise HTTPException(status_code=404, detail="Images not found for batch update.")
 
@@ -490,28 +491,35 @@ def batch_retag(
 
     raw_tag_inputs = {t.strip().lower() for t in tags.split(',') if t.strip()}
     
-    if action in {"add", "replace"}:
-        tags_for_action = get_or_create_tags(db, raw_tag_inputs)
-
+    # Get/create all tags involved in this operation up front.
+    tags_for_action = get_or_create_tags(db, raw_tag_inputs)
+    
     for img in images_to_update:
+        current_tags_set = set(img.tags)
+        
         if action == "replace":
-            img.tags = tags_for_action
-        elif action == "add":
-            current_tags_set = {(tag.name, tag.category) for tag in img.tags}
-            tags_to_append = [tag for tag in tags_for_action if (tag.name, tag.category) not in current_tags_set]
-            img.tags.extend(tags_to_append)
-        elif action == "remove":
-            # Removal must also be category-aware.
-            tags_to_remove_spec = set()
-            for raw_tag in raw_tag_inputs:
-                category, name = ('general', raw_tag)
-                if ':' in raw_tag:
-                    cat, n = raw_tag.split(':', 1)
-                    if cat in VALID_CATEGORIES:
-                        category, name = cat, n
-                tags_to_remove_spec.add((name, category))
+            # For 'replace', we do a full diff to add/remove as needed.
+            new_tags_set = set(tags_for_action)
+            tags_to_add = new_tags_set - current_tags_set
+            tags_to_remove = current_tags_set - new_tags_set
             
-            img.tags = [tag for tag in img.tags if (tag.name, tag.category) not in tags_to_remove_spec]
+            for tag in tags_to_add:
+                img.tags.append(tag)
+            for tag in tags_to_remove:
+                img.tags.remove(tag)
+
+        elif action == "add":
+            # For 'add', we only append tags that are not already present.
+            for tag in tags_for_action:
+                if tag not in current_tags_set:
+                    img.tags.append(tag)
+
+        elif action == "remove":
+            # For 'remove', we only remove tags that are actually present.
+            # This is more efficient than rebuilding the entire list.
+            for tag in tags_for_action:
+                if tag in current_tags_set:
+                    img.tags.remove(tag)
     
     db.commit()
     return JSONResponse({"message": "Batch tags updated successfully."})
