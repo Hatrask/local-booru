@@ -15,7 +15,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ValidationError
 from sqlalchemy.orm import Session, joinedload, selectinload
-from sqlalchemy import desc, func, or_, and_
+from sqlalchemy import desc, func, or_, and_, text
 
 # Import app components from the app package
 from . import app, templates, get_db, MEDIA_DIR, THUMBNAIL_DIR, UNDO_STATE_FILE, PROJECT_ROOT
@@ -242,14 +242,35 @@ async def api_upload_from_url(request: UploadFromUrlRequest, db: Session = Depen
 def api_update_image_tags(image_id: int, request: UpdateTagsRequest, db: Session = Depends(get_db)):
     """
     Replaces all tags on a single image. Designed for the new lightbox editor.
+    This has been optimized to perform a diff, only adding or removing tags
+    that have changed, which is much more efficient than replacing the entire set.
     """
-    image = db.query(Image).options(joinedload(Image.tags)).filter(Image.id == image_id).first()
+    image = db.query(Image).options(selectinload(Image.tags)).filter(Image.id == image_id).first()
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
     
     # The frontend sends a list of raw tag strings (e.g., "artist:someone", "general_tag")
     tag_names = {t.strip().lower() for t in request.tags if t.strip()}
-    image.tags = get_or_create_tags(db, tag_names)
+    
+    # Get Tag objects for the new set of tags, creating any that don't exist.
+    new_tags_list = get_or_create_tags(db, tag_names)
+
+    # --- Efficiently update tags by comparing current and new sets ---
+    # By converting the tag lists to sets, we can quickly find the difference.
+    new_tags_set = set(new_tags_list)
+    current_tags_set = set(image.tags)
+
+    tags_to_add = new_tags_set - current_tags_set
+    tags_to_remove = current_tags_set - new_tags_set
+
+    # Perform the append/remove operations. SQLAlchemy's ORM handles the
+    # underlying INSERT and DELETE statements on the association table.
+    for tag in tags_to_add:
+        image.tags.append(tag)
+    
+    for tag in tags_to_remove:
+        image.tags.remove(tag)
+
     db.commit()
 
     # Return the updated tag list in the standard, sorted format for immediate UI update.
@@ -440,13 +461,14 @@ def batch_retag(
     """
     Performs a tag operation (add, remove, or replace) on a batch of images.
     Saves the 'before' state to a file for persistent undo.
+    This version is optimized to only perform necessary INSERT/DELETE operations.
     """
     if action not in {"add", "remove", "replace"}:
         raise HTTPException(status_code=400, detail="Invalid action specified.")
     if not image_ids:
         raise HTTPException(status_code=400, detail="No image IDs provided.")
 
-    images_to_update = db.query(Image).filter(Image.id.in_(image_ids)).options(joinedload(Image.tags)).all()
+    images_to_update = db.query(Image).filter(Image.id.in_(image_ids)).options(selectinload(Image.tags)).all()
     if not images_to_update:
         raise HTTPException(status_code=404, detail="Images not found for batch update.")
 
@@ -469,28 +491,35 @@ def batch_retag(
 
     raw_tag_inputs = {t.strip().lower() for t in tags.split(',') if t.strip()}
     
-    if action in {"add", "replace"}:
-        tags_for_action = get_or_create_tags(db, raw_tag_inputs)
-
+    # Get/create all tags involved in this operation up front.
+    tags_for_action = get_or_create_tags(db, raw_tag_inputs)
+    
     for img in images_to_update:
+        current_tags_set = set(img.tags)
+        
         if action == "replace":
-            img.tags = tags_for_action
-        elif action == "add":
-            current_tags_set = {(tag.name, tag.category) for tag in img.tags}
-            tags_to_append = [tag for tag in tags_for_action if (tag.name, tag.category) not in current_tags_set]
-            img.tags.extend(tags_to_append)
-        elif action == "remove":
-            # Removal must also be category-aware.
-            tags_to_remove_spec = set()
-            for raw_tag in raw_tag_inputs:
-                category, name = ('general', raw_tag)
-                if ':' in raw_tag:
-                    cat, n = raw_tag.split(':', 1)
-                    if cat in VALID_CATEGORIES:
-                        category, name = cat, n
-                tags_to_remove_spec.add((name, category))
+            # For 'replace', we do a full diff to add/remove as needed.
+            new_tags_set = set(tags_for_action)
+            tags_to_add = new_tags_set - current_tags_set
+            tags_to_remove = current_tags_set - new_tags_set
             
-            img.tags = [tag for tag in img.tags if (tag.name, tag.category) not in tags_to_remove_spec]
+            for tag in tags_to_add:
+                img.tags.append(tag)
+            for tag in tags_to_remove:
+                img.tags.remove(tag)
+
+        elif action == "add":
+            # For 'add', we only append tags that are not already present.
+            for tag in tags_for_action:
+                if tag not in current_tags_set:
+                    img.tags.append(tag)
+
+        elif action == "remove":
+            # For 'remove', we only remove tags that are actually present.
+            # This is more efficient than rebuilding the entire list.
+            for tag in tags_for_action:
+                if tag in current_tags_set:
+                    img.tags.remove(tag)
     
     db.commit()
     return JSONResponse({"message": "Batch tags updated successfully."})
@@ -664,24 +693,32 @@ def api_rename_tag(tag_id: int, request: RenameTagRequest, db: Session = Depends
 
 @app.post("/api/tags/merge")
 def api_merge_tags(tag_id_to_keep: int = Form(...), tag_id_to_delete: int = Form(...), db: Session = Depends(get_db)):
-    if tag_id_to_keep == tag_id_to_delete: raise HTTPException(status_code=400, detail="Cannot merge a tag with itself.")
+    """
+    Merges one tag into another. This implementation uses raw SQL for high
+    performance, especially when dealing with tags that have a very large
+    number of associated images. It avoids loading all images into memory.
+    """
+    if tag_id_to_keep == tag_id_to_delete:
+        raise HTTPException(status_code=400, detail="Cannot merge a tag with itself.")
     
     tag_to_keep = db.query(Tag).filter(Tag.id == tag_id_to_keep).first()
-    tag_to_delete = db.query(Tag).options(selectinload(Tag.images)).filter(Tag.id == tag_id_to_delete).first()
+    tag_to_delete = db.query(Tag).filter(Tag.id == tag_id_to_delete).first()
     
-    if not tag_to_keep or not tag_to_delete: raise HTTPException(status_code=404, detail="One or both tags were not found.")
+    if not tag_to_keep or not tag_to_delete:
+        raise HTTPException(status_code=404, detail="One or both tags were not found.")
     
-    # Re-assign all images from the deleted tag to the kept tag.
-    # This allows for merging across categories.
-    for image in tag_to_delete.images:
-        if tag_to_keep not in image.tags:
-            image.tags.append(tag_to_keep)
-
-    # After merging, the kept tag has been "used", so update its timestamp.
+    insert_stmt = text("""
+        INSERT INTO image_tags (image_id, tag_id)
+        SELECT image_id, :tag_id_to_keep
+        FROM image_tags
+        WHERE tag_id = :tag_id_to_delete
+        ON CONFLICT(image_id, tag_id) DO NOTHING
+    """)
+    db.execute(insert_stmt, {"tag_id_to_keep": tag_id_to_keep, "tag_id_to_delete": tag_id_to_delete})
+    
     tag_to_keep.last_used_at = datetime.now(timezone.utc)
-    
-    tag_to_delete.images.clear()
     db.delete(tag_to_delete)
+    
     db.commit()
     return {"message": f"Tag '{tag_to_delete.name}' merged into '{tag_to_keep.name}'."}
 
@@ -706,84 +743,88 @@ def api_change_tag_category(tag_id: int, request: ChangeCategoryRequest, db: Ses
 @app.get("/api/export_collection")
 async def api_export_collection(db: Session = Depends(get_db)):
     """
-    Creates and streams a zip archive of the entire collection using a temporary
-    file on disk. This is memory-efficient and allows the browser to show
-    download progress.
+    Creates and streams a zip archive of the entire collection.
+    This implementation is highly scalable and memory-efficient, suitable for
+    very large collections (e.g., 40GB+), by using an async producer-consumer
+    pattern. It avoids loading the entire archive into memory.
     """
-    all_images = db.query(Image).options(selectinload(Image.tags)).order_by(Image.id).all()
     
-    images_metadata = []
-    for image in all_images:
-        tags_list = []
-        for tag in sorted(image.tags, key=lambda t: (t.category, t.name)):
-            if tag.category == 'general':
-                tags_list.append(tag.name)
-            else:
-                tags_list.append(f"{tag.category}:{tag.name}")
-        
-        images_metadata.append({
-            "filename": image.filename,
-            "sha256_hash": image.sha256_hash,
-            "tags": tags_list
-        })
+    # The consumer: an async generator that yields zip chunks from a queue.
+    async def stream_generator(queue: asyncio.Queue):
+        while True:
+            chunk = await queue.get()
+            if chunk is None:  # Sentinel value indicates the end of the stream.
+                break
+            yield chunk
+            queue.task_done()
 
-    final_metadata = {
-        "app_version": app.version,
-        "export_date": datetime.now(timezone.utc).isoformat(),
-        "images": images_metadata
+    # The producer: runs in a thread, builds the zip, and puts chunks in the queue.
+    def zip_producer(queue: asyncio.Queue):
+        try:
+            # All DB and file operations happen here, away from the event loop.
+            all_images = db.query(Image).options(selectinload(Image.tags)).order_by(Image.id).all()
+            
+            images_metadata = []
+            for image in all_images:
+                tags_list = []
+                for tag in sorted(image.tags, key=lambda t: (t.category, t.name)):
+                    if tag.category == 'general':
+                        tags_list.append(tag.name)
+                    else:
+                        tags_list.append(f"{tag.category}:{tag.name}")
+                
+                images_metadata.append({
+                    "filename": image.filename,
+                    "sha256_hash": image.sha256_hash,
+                    "tags": tags_list
+                })
+
+            final_metadata = {
+                "app_version": app.version,
+                "export_date": datetime.now(timezone.utc).isoformat(),
+                "images": images_metadata
+            }
+
+            class QueueWriter:
+                def write(self, data):
+                    num_bytes = len(data)
+                    asyncio.run_coroutine_threadsafe(queue.put(data), loop).result()
+                    return num_bytes
+
+            writer = QueueWriter()
+            with zipfile.ZipFile(writer, 'w', zipfile.ZIP_STORED) as zipf:
+                zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
+                
+                images_dir = os.path.join(MEDIA_DIR, "images")
+                for image_meta in images_metadata:
+                    filename = image_meta["filename"]
+                    nested_path = get_nested_path_for_filename(filename)
+                    source_path = os.path.join(images_dir, nested_path, filename)
+                    
+                    archive_path = os.path.join("images", filename)
+                    if os.path.exists(source_path):
+                        zipf.write(source_path, archive_path)
+        
+        finally:
+            # Signal the end of the stream by putting the sentinel value.
+            asyncio.run_coroutine_threadsafe(queue.put(None), loop)
+            db.close() # Ensure the session used by the thread is closed.
+
+    loop = asyncio.get_running_loop()
+    data_queue = asyncio.Queue(maxsize=10) # Maxsize provides backpressure
+    
+    # Start the producer in a background thread.
+    loop.run_in_executor(None, zip_producer, data_queue)
+
+    headers = {
+        'Content-Disposition': f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"
     }
 
-    # Create a temporary file on disk to build the zip archive.
-    # delete=False is crucial so we can control its lifecycle.
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-    
-    try:
-        # Build the zip file on disk, not in memory.
-        with zipfile.ZipFile(temp_file, 'w', zipfile.ZIP_STORED) as zipf:
-            zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
-            
-            images_dir = os.path.join(MEDIA_DIR, "images")
-            for image_meta in images_metadata:
-                # Find the source file in its nested directory
-                filename = image_meta["filename"]
-                nested_path = get_nested_path_for_filename(filename)
-                source_path = os.path.join(images_dir, nested_path, filename)
-                
-                # The archive path remains flat to ensure import compatibility
-                archive_path = os.path.join("images", filename)
-                if os.path.exists(source_path):
-                    zipf.write(source_path, archive_path)
-    
-        # The temporary file is now complete. Get its size for the Content-Length header.
-        file_size = temp_file.tell()
-        temp_file.seek(0) # Rewind to the beginning for streaming.
-
-        headers = {
-            'Content-Length': str(file_size),
-            'Content-Disposition': f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"
-        }
-
-        # This generator function reads the file and ensures it gets deleted.
-        def file_iterator(file_path):
-            with open(file_path, 'rb') as f:
-                while chunk := f.read(8192): # Read in 8KB chunks
-                    yield chunk
-            # The key cleanup step: delete the temp file after streaming is done.
-            os.unlink(file_path)
-        
-        return StreamingResponse(
-            file_iterator(temp_file.name),
-            media_type="application/zip",
-            headers=headers
-        )
-
-    except Exception as e:
-        # If anything fails, make sure we clean up the temp file.
-        os.unlink(temp_file.name)
-        raise HTTPException(status_code=500, detail=f"Failed to create zip archive: {e}")
-    finally:
-        # This ensures the file handle is closed.
-        temp_file.close()
+    return StreamingResponse(
+        stream_generator(data_queue),
+        media_type="application/zip",
+        headers=headers
+    )
 
 @app.post("/api/factory_reset")
 def api_schedule_factory_reset():

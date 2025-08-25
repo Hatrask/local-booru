@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Table, ForeignKey, UniqueConstraint, DateTime, func
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, UniqueConstraint, DateTime, func, Index
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -7,7 +7,10 @@ Base = declarative_base()
 tags_table = Table(
     'image_tags', Base.metadata,
     Column('image_id', Integer, ForeignKey('images.id'), primary_key=True),
-    Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True)
+    Column('tag_id', Integer, ForeignKey('tags.id'), primary_key=True),
+    # Add an index on the tag_id column. This will significantly speed up
+    # queries that filter or group by tag, such as in the Tag Manager.
+    Index('ix_image_tags_tag_id', 'tag_id')
 )
 
 # --- SQLAlchemy ORM Models ---
