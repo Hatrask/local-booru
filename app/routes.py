@@ -743,84 +743,88 @@ def api_change_tag_category(tag_id: int, request: ChangeCategoryRequest, db: Ses
 @app.get("/api/export_collection")
 async def api_export_collection(db: Session = Depends(get_db)):
     """
-    Creates and streams a zip archive of the entire collection using a temporary
-    file on disk. This is memory-efficient and allows the browser to show
-    download progress.
+    Creates and streams a zip archive of the entire collection.
+    This implementation is highly scalable and memory-efficient, suitable for
+    very large collections (e.g., 40GB+), by using an async producer-consumer
+    pattern. It avoids loading the entire archive into memory.
     """
-    all_images = db.query(Image).options(selectinload(Image.tags)).order_by(Image.id).all()
     
-    images_metadata = []
-    for image in all_images:
-        tags_list = []
-        for tag in sorted(image.tags, key=lambda t: (t.category, t.name)):
-            if tag.category == 'general':
-                tags_list.append(tag.name)
-            else:
-                tags_list.append(f"{tag.category}:{tag.name}")
-        
-        images_metadata.append({
-            "filename": image.filename,
-            "sha256_hash": image.sha256_hash,
-            "tags": tags_list
-        })
+    # The consumer: an async generator that yields zip chunks from a queue.
+    async def stream_generator(queue: asyncio.Queue):
+        while True:
+            chunk = await queue.get()
+            if chunk is None:  # Sentinel value indicates the end of the stream.
+                break
+            yield chunk
+            queue.task_done()
 
-    final_metadata = {
-        "app_version": app.version,
-        "export_date": datetime.now(timezone.utc).isoformat(),
-        "images": images_metadata
+    # The producer: runs in a thread, builds the zip, and puts chunks in the queue.
+    def zip_producer(queue: asyncio.Queue):
+        try:
+            # All DB and file operations happen here, away from the event loop.
+            all_images = db.query(Image).options(selectinload(Image.tags)).order_by(Image.id).all()
+            
+            images_metadata = []
+            for image in all_images:
+                tags_list = []
+                for tag in sorted(image.tags, key=lambda t: (t.category, t.name)):
+                    if tag.category == 'general':
+                        tags_list.append(tag.name)
+                    else:
+                        tags_list.append(f"{tag.category}:{tag.name}")
+                
+                images_metadata.append({
+                    "filename": image.filename,
+                    "sha256_hash": image.sha256_hash,
+                    "tags": tags_list
+                })
+
+            final_metadata = {
+                "app_version": app.version,
+                "export_date": datetime.now(timezone.utc).isoformat(),
+                "images": images_metadata
+            }
+
+            class QueueWriter:
+                def write(self, data):
+                    num_bytes = len(data)
+                    asyncio.run_coroutine_threadsafe(queue.put(data), loop).result()
+                    return num_bytes
+
+            writer = QueueWriter()
+            with zipfile.ZipFile(writer, 'w', zipfile.ZIP_STORED) as zipf:
+                zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
+                
+                images_dir = os.path.join(MEDIA_DIR, "images")
+                for image_meta in images_metadata:
+                    filename = image_meta["filename"]
+                    nested_path = get_nested_path_for_filename(filename)
+                    source_path = os.path.join(images_dir, nested_path, filename)
+                    
+                    archive_path = os.path.join("images", filename)
+                    if os.path.exists(source_path):
+                        zipf.write(source_path, archive_path)
+        
+        finally:
+            # Signal the end of the stream by putting the sentinel value.
+            asyncio.run_coroutine_threadsafe(queue.put(None), loop)
+            db.close() # Ensure the session used by the thread is closed.
+
+    loop = asyncio.get_running_loop()
+    data_queue = asyncio.Queue(maxsize=10) # Maxsize provides backpressure
+    
+    # Start the producer in a background thread.
+    loop.run_in_executor(None, zip_producer, data_queue)
+
+    headers = {
+        'Content-Disposition': f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"
     }
 
-    # Create a temporary file on disk to build the zip archive.
-    # delete=False is crucial so we can control its lifecycle.
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
-    
-    try:
-        # Build the zip file on disk, not in memory.
-        with zipfile.ZipFile(temp_file, 'w', zipfile.ZIP_STORED) as zipf:
-            zipf.writestr("metadata.json", json.dumps(final_metadata, indent=4))
-            
-            images_dir = os.path.join(MEDIA_DIR, "images")
-            for image_meta in images_metadata:
-                # Find the source file in its nested directory
-                filename = image_meta["filename"]
-                nested_path = get_nested_path_for_filename(filename)
-                source_path = os.path.join(images_dir, nested_path, filename)
-                
-                # The archive path remains flat to ensure import compatibility
-                archive_path = os.path.join("images", filename)
-                if os.path.exists(source_path):
-                    zipf.write(source_path, archive_path)
-    
-        # The temporary file is now complete. Get its size for the Content-Length header.
-        file_size = temp_file.tell()
-        temp_file.seek(0) # Rewind to the beginning for streaming.
-
-        headers = {
-            'Content-Length': str(file_size),
-            'Content-Disposition': f"attachment; filename=booru_export_{datetime.now().strftime('%Y%m%d')}.zip"
-        }
-
-        # This generator function reads the file and ensures it gets deleted.
-        def file_iterator(file_path):
-            with open(file_path, 'rb') as f:
-                while chunk := f.read(8192): # Read in 8KB chunks
-                    yield chunk
-            # The key cleanup step: delete the temp file after streaming is done.
-            os.unlink(file_path)
-        
-        return StreamingResponse(
-            file_iterator(temp_file.name),
-            media_type="application/zip",
-            headers=headers
-        )
-
-    except Exception as e:
-        # If anything fails, make sure we clean up the temp file.
-        os.unlink(temp_file.name)
-        raise HTTPException(status_code=500, detail=f"Failed to create zip archive: {e}")
-    finally:
-        # This ensures the file handle is closed.
-        temp_file.close()
+    return StreamingResponse(
+        stream_generator(data_queue),
+        media_type="application/zip",
+        headers=headers
+    )
 
 @app.post("/api/factory_reset")
 def api_schedule_factory_reset():
